@@ -157,6 +157,7 @@ test.describe( 'Staging Guard', () => {
 	} );
 
 	test( 'abilities: an agent can ask which copy this is, test email and read the log', async ( { rest } ) => {
+		test.skip( 'yes' !== wpEval( "echo function_exists( 'wp_register_ability' ) ? 'yes' : 'no';" ), 'The Abilities API needs WordPress 6.9.' );
 		const run = ( name, method, input ) => rest( method, `/wp-abilities/v1/abilities/staging-guard/${ name }/run`, input ? { input } : undefined );
 
 		const listed = await rest( 'GET', '/wp-abilities/v1/abilities?category=staging-guard' );
