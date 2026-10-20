@@ -3,7 +3,7 @@
  * Plugin Name:       Staging Guard
  * Plugin URI:        https://wordpress.org/plugins/staging-guard/
  * Description:       Keeps staging and local copies of a site from emailing real people or getting indexed by search engines, and colours the admin bar so nobody mistakes them for the live site.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 6.6
  * Requires PHP:      7.4
  * Author:            Aryan Jasala
@@ -19,7 +19,7 @@ namespace AryanX\StagingGuard;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION     = '1.2.0';
+const VERSION     = '1.3.0';
 const PLUGIN_FILE = __FILE__;
 
 // PSR-4: AryanX\StagingGuard\Foo\Bar lives in src/Foo/Bar.php.

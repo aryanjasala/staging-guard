@@ -4,7 +4,7 @@ Tags: staging, environment, email, noindex, development
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -96,6 +96,10 @@ It keeps who an email was for and its subject, and the message only if you turn 
 2. Tools > Staging Guard with the email log.
 
 == Changelog ==
+
+= 1.3.0 =
+* Fix: make the abilities visible to MCP agents
+* New: add abilities so AI agents can tell staging from the live site before doing anything risky
 
 = 1.2.0 =
 * New: add filters for email handling, robots.txt, colours and labels, and actions for the production lock
