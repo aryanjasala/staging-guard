@@ -69,13 +69,30 @@ final class SettingsPage implements Service {
 	}
 
 	/**
+	 * Capability needed to see and change Staging Guard.
+	 *
+	 * On multisite only network admins may, so one site admin on a staging
+	 * network cannot switch email back on for everyone.
+	 *
+	 * @return string
+	 */
+	public static function capability(): string {
+		/**
+		 * Filters the capability needed to see and change Staging Guard.
+		 *
+		 * @param string $capability Default manage_options, or manage_network_options on multisite.
+		 */
+		return (string) apply_filters( 'staging_guard_capability', is_multisite() ? 'manage_network_options' : 'manage_options' );
+	}
+
+	/**
 	 * Registers Tools > Staging Guard.
 	 */
 	public function add_page(): void {
 		$hook = add_management_page(
 			__( 'Staging Guard', 'staging-guard' ),
 			__( 'Staging Guard', 'staging-guard' ),
-			'manage_options',
+			self::capability(),
 			self::SLUG,
 			array( $this, 'render' )
 		);
@@ -241,19 +258,32 @@ final class SettingsPage implements Service {
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Email log', 'staging-guard' ); ?></th>
 					<td>
-						<label><input type="checkbox" name="keep_bodies" value="1" <?php checked( $settings['keep_bodies'] ); ?>> <?php esc_html_e( 'Keep message bodies in the log', 'staging-guard' ); ?></label>
-						<p class="description"><?php esc_html_e( 'Useful for checking email content on staging. Off by default because emails can contain personal data and password reset links.', 'staging-guard' ); ?></p>
+						<label><input type="checkbox" name="keep_bodies" value="1" <?php checked( $settings['keep_bodies'] ); ?> <?php disabled( $this->settings->is_fixed( 'keep_bodies' ) ); ?>> <?php esc_html_e( 'Keep message bodies in the log', 'staging-guard' ); ?></label>
+						<p class="description">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %d: number of days. */
+									_n( 'Useful for checking email content on staging. Off by default because emails can contain personal data and password reset links. Entries are deleted after %d day.', 'Useful for checking email content on staging. Off by default because emails can contain personal data and password reset links. Entries are deleted after %d days.', $this->mail->log()->days(), 'staging-guard' ),
+									$this->mail->log()->days()
+								)
+							);
+							?>
+						</p>
 					</td>
 				</tr>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Search engines', 'staging-guard' ); ?></th>
 					<td>
-						<label><input type="checkbox" name="noindex" value="1" <?php checked( $settings['noindex'] ); ?>> <?php esc_html_e( 'Hide from search engines', 'staging-guard' ); ?></label>
+						<label><input type="checkbox" name="noindex" value="1" <?php checked( $settings['noindex'] ); ?> <?php disabled( $this->settings->is_fixed( 'noindex' ) ); ?>> <?php esc_html_e( 'Hide from search engines', 'staging-guard' ); ?></label>
 					</td>
 				</tr>
 			</table>
 			<?php if ( $policy['locked'] ) : ?>
 				<p class="description"><?php esc_html_e( 'Email settings are fixed in wp-config.php (STAGING_GUARD_MAIL_MODE, STAGING_GUARD_REDIRECT_TO or STAGING_GUARD_ALLOWLIST).', 'staging-guard' ); ?></p>
+			<?php endif; ?>
+			<?php if ( $this->settings->is_fixed( 'keep_bodies' ) || $this->settings->is_fixed( 'noindex' ) ) : ?>
+				<p class="description"><?php esc_html_e( 'Greyed-out settings are fixed in wp-config.php (STAGING_GUARD_KEEP_BODIES or STAGING_GUARD_NOINDEX).', 'staging-guard' ); ?></p>
 			<?php endif; ?>
 			<?php submit_button( __( 'Save settings', 'staging-guard' ) ); ?>
 		</form>
@@ -382,7 +412,7 @@ final class SettingsPage implements Service {
 	 * Handles every form on the screen.
 	 */
 	public function handle_form(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( self::capability() ) ) {
 			wp_die( esc_html__( 'Sorry, you are not allowed to change these settings.', 'staging-guard' ), 403 );
 		}
 
@@ -413,16 +443,20 @@ final class SettingsPage implements Service {
 				break;
 
 			case 'save':
-				$mode = isset( $_POST['mail_mode'] ) ? sanitize_key( wp_unslash( $_POST['mail_mode'] ) ) : 'block';
-				$this->settings->update(
-					array(
-						'mail_mode'   => in_array( $mode, Settings::MAIL_MODES, true ) ? $mode : 'block',
-						'redirect_to' => isset( $_POST['redirect_to'] ) ? sanitize_email( wp_unslash( $_POST['redirect_to'] ) ) : '',
-						'allowlist'   => isset( $_POST['allowlist'] ) ? Settings::parse_allowlist( sanitize_textarea_field( wp_unslash( $_POST['allowlist'] ) ) ) : array(),
-						'keep_bodies' => ! empty( $_POST['keep_bodies'] ),
-						'noindex'     => ! empty( $_POST['noindex'] ),
-					)
+				$mode    = isset( $_POST['mail_mode'] ) ? sanitize_key( wp_unslash( $_POST['mail_mode'] ) ) : 'block';
+				$changes = array(
+					'mail_mode'   => in_array( $mode, Settings::MAIL_MODES, true ) ? $mode : 'block',
+					'redirect_to' => isset( $_POST['redirect_to'] ) ? sanitize_email( wp_unslash( $_POST['redirect_to'] ) ) : '',
+					'allowlist'   => isset( $_POST['allowlist'] ) ? Settings::parse_allowlist( sanitize_textarea_field( wp_unslash( $_POST['allowlist'] ) ) ) : array(),
+					'keep_bodies' => ! empty( $_POST['keep_bodies'] ),
+					'noindex'     => ! empty( $_POST['noindex'] ),
 				);
+				foreach ( array( 'keep_bodies', 'noindex' ) as $key ) {
+					if ( $this->settings->is_fixed( $key ) ) {
+						unset( $changes[ $key ] );
+					}
+				}
+				$this->settings->update( $changes );
 				$args['sg_message'] = 'saved';
 				break;
 		}

@@ -49,6 +49,10 @@ Fix the email behaviour per environment, so a database copy cannot change it:
 `define( 'STAGING_GUARD_MAIL_MODE', 'redirect' ); // block, redirect or allow`
 `define( 'STAGING_GUARD_REDIRECT_TO', 'qa@example.com' );`
 `define( 'STAGING_GUARD_ALLOWLIST', '@youragency.com, client@example.com' );`
+`define( 'STAGING_GUARD_PRODUCTION_HOSTS', 'example.com, shop.example.com' ); // the live domains`
+`define( 'STAGING_GUARD_KEEP_BODIES', false );`
+`define( 'STAGING_GUARD_NOINDEX', true );`
+`define( 'STAGING_GUARD_LOG_DAYS', 7 );`
 
 = WP-CLI =
 
@@ -75,6 +79,14 @@ The production lock is still stored, and the live domain still matches it, so th
 = Can I change how the environment is detected? =
 
 Use the `staging_guard_environment` filter. It receives an array with `type` (production, staging, development or local) and `source`.
+
+= What if the live site moves to a new domain? =
+
+Then the production lock no longer matches, and the live site would count as staging. Staging Guard warns about this on every admin screen and in Site Health, so it does not go unnoticed. Lock the new domain from Tools > Staging Guard, or list every live domain in `STAGING_GUARD_PRODUCTION_HOSTS` so a move never trips it. `www.` and the bare domain already count as the same.
+
+= Does the email log keep personal data? =
+
+It keeps who an email was for and its subject, and the message only if you turn that on. Entries are deleted after 7 days, and the log is part of the WordPress export and erase personal data tools. The live site keeps no log.
 
 == Screenshots ==
 

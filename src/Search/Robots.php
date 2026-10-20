@@ -24,6 +24,7 @@ final class Robots implements Service {
 	 */
 	public function register(): void {
 		add_filter( 'wp_robots', array( $this, 'robots_meta' ), PHP_INT_MAX );
+		// phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.robots_txt -- On VIP the robots.txt output is cached; docs/REFERENCE.md explains how to flush it.
 		add_filter( 'robots_txt', array( $this, 'robots_txt' ), PHP_INT_MAX );
 		add_filter( 'wp_sitemaps_enabled', '__return_false' );
 		add_action( 'send_headers', array( $this, 'robots_header' ) );

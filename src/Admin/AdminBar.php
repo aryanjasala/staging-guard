@@ -64,13 +64,16 @@ final class AdminBar implements Service {
 			array(
 				'id'    => 'staging-guard',
 				'title' => esc_html( $this->environment->label() ),
-				'href'  => current_user_can( 'manage_options' ) ? admin_url( 'tools.php?page=' . SettingsPage::SLUG ) : false,
+				'href'  => current_user_can( SettingsPage::capability() ) ? admin_url( 'tools.php?page=' . SettingsPage::SLUG ) : false,
 				'meta'  => array(
-					'title' => sprintf(
-						/* translators: %s: what happens to outgoing email, e.g. "Blocked". */
-						__( 'Not the live site. Email: %s.', 'staging-guard' ),
-						$this->mail->describe()
-					),
+					// Only people who manage Staging Guard see where email goes.
+					'title' => current_user_can( SettingsPage::capability() )
+						? sprintf(
+							/* translators: %s: what happens to outgoing email, e.g. "Blocked". */
+							__( 'Not the live site. Email: %s.', 'staging-guard' ),
+							$this->mail->describe()
+						)
+						: __( 'Not the live site.', 'staging-guard' ),
 				),
 			)
 		);

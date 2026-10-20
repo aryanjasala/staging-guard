@@ -11,7 +11,9 @@ test( 'demo: a staging copy blocks, then redirects, its email', async ( { browse
 		'allowlist'       => array( '@youragency.com' ),
 		'keep_bodies'     => true,
 	), false );` );
-	wp( 'option', 'delete', 'staging_guard_mail_log' );
+	// The screens warn that only the lock makes this staging; hide that for the pictures.
+	wpEval( `update_user_meta( 1, 'staging_guard_lock_notice_dismissed', AryanX\\StagingGuard\\Environment::hash( wp_parse_url( home_url(), PHP_URL_HOST ) . ':' . wp_parse_url( home_url(), PHP_URL_PORT ) ) );` );
+	wpEval( `foreach ( get_posts( array( 'post_type' => 'staging_guard_mail', 'post_status' => 'any', 'numberposts' => 500, 'fields' => 'ids' ) ) as $id ) { wp_delete_post( $id, true ); }` );
 	const post = wp( 'post', 'create', '--post_title=Spring menu is here', '--post_status=publish', '--post_content=Three new dishes and a lemon tart.', '--porcelain' );
 
 	try {
@@ -48,7 +50,7 @@ test( 'demo: a staging copy blocks, then redirects, its email', async ( { browse
 		} );
 	} finally {
 		wp( 'option', 'delete', 'staging_guard_settings' );
-		wp( 'option', 'delete', 'staging_guard_mail_log' );
+		wpEval( `foreach ( get_posts( array( 'post_type' => 'staging_guard_mail', 'post_status' => 'any', 'numberposts' => 500, 'fields' => 'ids' ) ) as $id ) { wp_delete_post( $id, true ); }` );
 		wp( 'post', 'delete', post, '--force' );
 	}
 } );

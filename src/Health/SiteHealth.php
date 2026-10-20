@@ -93,13 +93,28 @@ final class SiteHealth implements Service {
 			return $this->result( 'recommended', __( 'This staging copy sends email normally', 'staging-guard' ), __( 'Staging Guard is set to send email normally, so customers can receive email from this copy.', 'staging-guard' ), $action );
 		}
 
+		$summary = sprintf(
+			/* translators: 1: what happens to email, e.g. "Blocked", 2: "hidden" or "not hidden". */
+			__( 'Email: %1$s. Search engines: %2$s.', 'staging-guard' ),
+			$this->mail->describe(),
+			$this->settings->get( 'noindex' ) ? __( 'hidden', 'staging-guard' ) : __( 'not hidden', 'staging-guard' )
+		);
+
+		if ( $this->environment->is_staging_by_lock() ) {
+			return $this->result(
+				'recommended',
+				__( 'This site is treated as staging because of the production lock', 'staging-guard' ),
+				$this->environment->explain() . ' ' . $summary . ' ' . __( 'If this is the live site and its address changed, lock it to this domain again. On a real staging copy, set WP_ENVIRONMENT_TYPE to staging in its wp-config.php to make it explicit.', 'staging-guard' ),
+				$action
+			);
+		}
+
 		if ( $guarded ) {
 			return $this->result(
 				'good',
 				/* translators: %s: environment name, e.g. "Staging". */
-				sprintf( __( 'This %s copy is guarded', 'staging-guard' ), strtolower( $this->environment->label() ) ),
-				/* translators: 1: what happens to email, e.g. "Blocked", 2: "hidden" or "not hidden". */
-				sprintf( __( 'Email: %1$s. Search engines: %2$s.', 'staging-guard' ), $this->mail->describe(), $this->settings->get( 'noindex' ) ? __( 'hidden', 'staging-guard' ) : __( 'not hidden', 'staging-guard' ) ),
+				sprintf( __( 'This copy is guarded (%s)', 'staging-guard' ), $this->environment->label() ),
+				$summary,
 				$action
 			);
 		}

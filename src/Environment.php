@@ -55,7 +55,7 @@ final class Environment {
 	/**
 	 * Environment type and how it was found.
 	 *
-	 * @return array{type: string, source: string} Source is constant, lock, default or filter.
+	 * @return array{type: string, source: string} Source is constant, hosts, lock, default or filter.
 	 */
 	public function detect(): array {
 		if ( null !== $this->detected ) {
@@ -68,6 +68,11 @@ final class Environment {
 			$environment = array(
 				'type'   => wp_get_environment_type(),
 				'source' => 'constant',
+			);
+		} elseif ( $this->production_hosts() ) {
+			$environment = array(
+				'type'   => array_intersect( $this->domain_variants( $this->domain() ), $this->production_hosts() ) ? 'production' : 'staging',
+				'source' => 'hosts',
 			);
 		} elseif ( $this->is_locked() ) {
 			$environment = array(
@@ -88,7 +93,7 @@ final class Environment {
 		 *     Detected environment.
 		 *
 		 *     @type string $type   One of production, staging, development or local.
-		 *     @type string $source How it was detected: constant, lock, default or filter.
+		 *     @type string $source How it was detected: constant, hosts, lock, default or filter.
 		 * }
 		 */
 		$this->detected = apply_filters( 'staging_guard_environment', $environment );
@@ -106,7 +111,7 @@ final class Environment {
 	}
 
 	/**
-	 * How the type was found: constant, lock, default or filter.
+	 * How the type was found: constant, hosts, lock, default or filter.
 	 *
 	 * @return string
 	 */
@@ -163,6 +168,40 @@ final class Environment {
 	}
 
 	/**
+	 * Domains of the live site, from STAGING_GUARD_PRODUCTION_HOSTS or the filter.
+	 *
+	 * When set, they decide production or staging instead of the production
+	 * lock. Useful when the live site answers on several domains, and on
+	 * multisite networks with mapped domains.
+	 *
+	 * @return string[] Lowercase host names, with a port if they need one.
+	 */
+	public function production_hosts(): array {
+		$hosts = defined( 'STAGING_GUARD_PRODUCTION_HOSTS' ) ? preg_split( '/[\s,]+/', (string) STAGING_GUARD_PRODUCTION_HOSTS ) : array();
+
+		/**
+		 * Filters the domains of the live site.
+		 *
+		 * @param string[] $hosts Host names, with a port if they need one. Default from STAGING_GUARD_PRODUCTION_HOSTS.
+		 */
+		$hosts = (array) apply_filters( 'staging_guard_production_hosts', array_filter( (array) $hosts ) );
+
+		return array_values( array_unique( array_filter( array_map( 'strtolower', array_map( 'trim', array_map( 'strval', $hosts ) ) ) ) ) );
+	}
+
+	/**
+	 * A domain with and without "www.", which are almost always the same site.
+	 *
+	 * @param string $domain Domain name, with port if any.
+	 * @return string[]
+	 */
+	public function domain_variants( string $domain ): array {
+		$domain = strtolower( $domain );
+
+		return 0 === strpos( $domain, 'www.' ) ? array( $domain, substr( $domain, 4 ) ) : array( $domain, 'www.' . $domain );
+	}
+
+	/**
 	 * Hash the production lock stores for a domain.
 	 *
 	 * @param string $domain Domain name, with port if any.
@@ -188,8 +227,29 @@ final class Environment {
 	 */
 	public function is_production_domain(): bool {
 		$hash = (string) $this->settings->get( 'production_hash' );
+		if ( '' === $hash ) {
+			return false;
+		}
 
-		return '' !== $hash && hash_equals( $hash, self::hash( $this->domain() ) );
+		foreach ( $this->domain_variants( $this->domain() ) as $domain ) {
+			if ( hash_equals( $hash, self::hash( $domain ) ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether this copy counts as staging only because the lock was set on another domain.
+	 *
+	 * That is right for a database copy, and wrong when the live site's own
+	 * address changed, so the screens warn about it.
+	 *
+	 * @return bool
+	 */
+	public function is_staging_by_lock(): bool {
+		return 'lock' === $this->source() && 'staging' === $this->type();
 	}
 
 	/**
@@ -217,6 +277,13 @@ final class Environment {
 		switch ( $this->source() ) {
 			case 'constant':
 				return __( 'Set by WP_ENVIRONMENT_TYPE in wp-config.php or the server environment.', 'staging-guard' );
+
+			case 'hosts':
+				return 'production' === $this->type()
+					/* translators: %s: domain name. */
+					? sprintf( __( 'This domain (%s) is in STAGING_GUARD_PRODUCTION_HOSTS.', 'staging-guard' ), $this->domain() )
+					/* translators: %s: domain name. */
+					: sprintf( __( 'This domain (%s) is not in STAGING_GUARD_PRODUCTION_HOSTS, so it is treated as staging.', 'staging-guard' ), $this->domain() );
 
 			case 'lock':
 				return $this->is_production_domain()
