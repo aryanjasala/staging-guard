@@ -1,28 +1,73 @@
 # Staging Guard
 
-Stops staging, development and local copies of a WordPress site from emailing real people or getting indexed, and colours the admin bar so nobody edits the wrong copy. On the live site it does nothing.
+[![PHPCS](https://github.com/aryanjasala/staging-guard/actions/workflows/phpcs.yml/badge.svg)](https://github.com/aryanjasala/staging-guard/actions/workflows/phpcs.yml) [![PHPStan](https://github.com/aryanjasala/staging-guard/actions/workflows/phpstan.yml/badge.svg)](https://github.com/aryanjasala/staging-guard/actions/workflows/phpstan.yml) [![Unit tests](https://github.com/aryanjasala/staging-guard/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/aryanjasala/staging-guard/actions/workflows/unit-tests.yml) [![E2E tests](https://github.com/aryanjasala/staging-guard/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/aryanjasala/staging-guard/actions/workflows/e2e-tests.yml) [![Plugin Check](https://github.com/aryanjasala/staging-guard/actions/workflows/plugin-check.yml/badge.svg)](https://github.com/aryanjasala/staging-guard/actions/workflows/plugin-check.yml)
+
+Stops staging, development and local copies of a WordPress site from emailing real people or getting indexed, and colors the admin bar so nobody edits the wrong copy. On the live site it does nothing.
+
+![The colored admin bar on a staging copy](.wordpress-org/screenshot-1.png)
+
+## Features
 
 On any copy that is not production:
 
-- Outgoing email is blocked, or sent to one test address with the real recipients in the subject. Cc and Bcc are stripped
-- Addresses and whole domains on an "Always deliver to" list still get email, so the team can test real flows
+- Outgoing email is **blocked**, or sent to **one test address** with the real recipients in the subject. Cc and Bcc are stripped
+- Addresses and whole domains under **Always deliver to** still get email, so the team can test real flows
 - The last 50 stopped emails are listed, with message bodies only if that setting is on
 - Search engines get an `X-Robots-Tag` header, a `noindex, nofollow` meta tag and a robots.txt that blocks everything. The XML sitemap is turned off
-- The admin bar is coloured by environment and every browser tab title starts with it, for example `[Staging] Posts`
-- A Site Health check warns when email could still reach real people
+- The admin bar is colored by environment, and every browser tab title starts with it, for example `[Staging] Posts`
+- A **Site Health** check warns when email could still reach real people, or when staging copies of the live site would not be detected
 
-## How it decides a copy is not live
+## Installation
 
-1. `WP_ENVIRONMENT_TYPE`, if it is set in wp-config.php or the server environment.
-2. Otherwise the **production lock**: set it once on the live site and every copy of that database on another domain counts as staging. The lock stores a hash of the live domain, not the domain itself, so database search-replace during a migration does not rewrite it.
+1. Download `staging-guard.zip` from the [latest release](https://github.com/aryanjasala/staging-guard/releases/latest).
+2. In WordPress, go to **Plugins > Add New Plugin > Upload Plugin**, choose the zip and activate it.
 
-With neither, WordPress assumes production and the plugin stays off.
+Or with WP-CLI:
 
-User-facing docs are in [`readme.txt`](readme.txt), which is what WordPress.org shows.
+```sh
+wp plugin install https://github.com/aryanjasala/staging-guard/releases/latest/download/staging-guard.zip --activate
+```
 
-## Requirements
+Needs WordPress 6.6+ and PHP 7.4+.
 
-WordPress 6.6+, PHP 7.4+.
+## How it knows which copy is live
+
+1. `WP_ENVIRONMENT_TYPE`, if it is set in wp-config.php or the server environment. This is the WordPress standard, and many hosts set it.
+2. Otherwise the **production lock**: on the live site, open **Tools > Staging Guard** and click **This is the live site**. From then on, any copy of that database on another domain counts as staging.
+
+The lock stores a hash of the live domain, not the domain itself, so the search-replace step of a migration does not rewrite it. With neither in place, WordPress assumes production and the plugin stays off.
+
+## Usage
+
+**Tools > Staging Guard** shows how this copy was detected, what happens to email and search engines, a test-email button and the list of stopped email:
+
+![Tools > Staging Guard with the email log](.wordpress-org/screenshot-2.png)
+
+### Settings in wp-config.php
+
+Fix the email behavior per environment, so a database copy cannot change it:
+
+```php
+define( 'STAGING_GUARD_MAIL_MODE', 'redirect' ); // block, redirect or allow
+define( 'STAGING_GUARD_REDIRECT_TO', 'qa@example.com' );
+define( 'STAGING_GUARD_ALLOWLIST', '@youragency.com, client@example.com' );
+```
+
+### WP-CLI
+
+```sh
+wp staging-guard status [--format=json]
+wp staging-guard lock-production
+wp staging-guard unlock-production
+wp staging-guard log [--format=table|csv|json|count]
+wp staging-guard test-email <to>
+```
+
+### For developers
+
+The `staging_guard_environment` filter receives `[ 'type' => 'production|staging|development|local', 'source' => 'constant|lock|default' ]` and can override the detection.
+
+Email is intercepted through the `wp_mail` and `pre_wp_mail` filters, so it works with SMTP plugins that send through `wp_mail()`. A plugin that replaces `wp_mail()` entirely cannot be intercepted, and the settings screen and Site Health both say so.
 
 ## Development
 
@@ -38,6 +83,7 @@ npm ci
 | `composer test` | PHPUnit unit tests. WordPress functions are mocked with Brain Monkey, so no database is needed |
 | `npm run env:start` | WordPress and MariaDB in Docker on http://localhost:8895 |
 | `npm run test:e2e` | Playwright end-to-end tests against that site, in headless Chrome |
+| `npm run screenshots` | Regenerates the screenshots in `.wordpress-org/` |
 | `npm run env:stop` | Removes the site and its database |
 
 The plugin is mounted read-only into the Docker site, so nothing in WordPress can change or delete the source. The end-to-end run empties the site's content before it starts, so point it only at this throwaway site.
@@ -49,44 +95,35 @@ The plugin is mounted read-only into the Docker site, so nothing in WordPress ca
 
 The redirect test hooks `phpmailer_init` and checks the recipients PHPMailer would really send to, not only what the log says.
 
-## CI
+## Contributing
 
-| Workflow | Runs on | What it checks |
-| --- | --- | --- |
-| PHPCS | push to `main`, pull requests | WordPress coding standards |
-| PHPStan | push to `main`, pull requests | Static analysis, level 6 |
-| Unit tests | push to `main`, pull requests | PHPUnit on PHP 7.4, 8.0, 8.1, 8.2, 8.3 and 8.4 |
-| E2E tests | push to `main`, pull requests | Playwright against the latest WordPress in Docker |
-| Plugin Check | push to `main`, pull requests | The official WordPress.org Plugin Check, on the built zip |
-| Release | tags `v*` | Builds the zip and publishes a GitHub release |
+`main` is protected: every change goes through a pull request, and it can only be merged once these pass:
 
-## Releasing
+- PHPCS and PHPStan
+- PHPUnit on PHP 7.4, 8.0, 8.1, 8.2, 8.3 and 8.4
+- the end-to-end suite against the latest WordPress
+- the WordPress.org Plugin Check on the built zip
+- the PR title check
 
-1. Update the version in three places: the plugin header, the `VERSION` constant and `Stable tag` in `readme.txt`. Add a `= x.y.z =` entry under `== Changelog ==`.
-2. Push a tag: `git tag v1.2.0 && git push origin v1.2.0`.
+Pull requests are squash-merged, so the **PR title becomes the commit on `main`** and decides the next release. Use a [Conventional Commit](https://www.conventionalcommits.org/) title:
 
-The release workflow fails if the tag does not match all three versions or the changelog has no entry for it. Otherwise it runs PHPCS and PHPUnit, builds the zip with `bin/build-zip.sh` (leaving out everything in `.distignore`), and publishes a GitHub release with the changelog entry as notes.
+| Title | Release |
+| --- | --- |
+| `feat: add bulk restore` | minor (1.1.0 to 1.2.0) |
+| `fix: keep the notice on narrow screens`, `perf: ...` | patch (1.1.0 to 1.1.1) |
+| `feat!: drop PHP 7.4`, or a `BREAKING CHANGE:` footer | major (1.1.0 to 2.0.0) |
+| `docs:`, `ci:`, `chore:`, `test:`, `refactor:`, `build:` | none |
 
-Deploying to WordPress.org is off until the repository variable `WPORG_DEPLOY` is `true` and the secrets `SVN_USERNAME` and `SVN_PASSWORD` are set.
+## Releases
 
-## Layout
+Releases are automatic:
 
-```
-staging-guard.php       plugin header and PSR-4 autoloader
-src/
-  Plugin.php            creates the services, guards only load when not production
-  Settings.php          the settings option and allowlist parsing
-  Environment.php       environment detection and the production lock
-  Mail/Guard.php        who an email may reach
-  Mail/Log.php          the stopped email list
-  Search/Robots.php     noindex header and tag, robots.txt, sitemaps
-  Admin/                settings screen, admin bar and tab titles
-  Health/SiteHealth.php the Site Health check
-  Cli/Command.php       wp staging-guard status|lock-production|log|test-email
-tests/
-  Unit/                 PHPUnit
-  e2e/                  Playwright specs and the Docker site
-```
+1. After each merge to `main`, the **Prepare release** workflow checks for `feat`, `fix`, `perf` or breaking commits since the last tag. If there are any, it opens (or updates) a `chore(release): x.y.z` pull request that bumps the version in the plugin header, the `VERSION` constant and the readme `Stable tag`, and adds the changelog entry to `readme.txt`.
+2. Merging that pull request runs the **Release** workflow: it tags `vx.y.z`, builds the zip with `bin/build-zip.sh` (leaving out everything in `.distignore`) and publishes the GitHub release with the changelog entry as notes.
+
+`bin/release.sh next` and `bin/release.sh notes` show locally what the next release would contain.
+
+Deploying to WordPress.org is off until the repository variable `WPORG_DEPLOY` is `true` and the secrets `SVN_USERNAME` and `SVN_PASSWORD` are set. The deploy uses `.wordpress-org/` for the screenshots.
 
 ## License
 
