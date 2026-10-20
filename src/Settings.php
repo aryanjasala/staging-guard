@@ -52,6 +52,13 @@ final class Settings {
 			}
 		}
 
+		/**
+		 * Filters whether staging copies are hidden from search engines.
+		 *
+		 * @param bool $noindex From the setting or STAGING_GUARD_NOINDEX. Default true.
+		 */
+		$all['noindex'] = (bool) apply_filters( 'staging_guard_noindex', $all['noindex'] );
+
 		return $all;
 	}
 

@@ -29,10 +29,20 @@ When a constant is set, its setting on the screen is read-only.
 | --- | --- | --- |
 | `staging_guard_environment` | filter | `( array $environment )`. Change the detected environment, see below |
 | `staging_guard_production_hosts` | filter | `( string[] $hosts )`. The live site's domains. Default from `STAGING_GUARD_PRODUCTION_HOSTS` |
+| `staging_guard_mail_policy` | filter | `( array $policy, string $environment )`. The final email handling: `mode`, `redirect_to`, `allowlist`. For example redirect on staging but block on development. A redirect without a valid address still blocks |
+| `staging_guard_allow_email` | filter | `( bool $allow, array $atts )`. Let one email out untouched and unlogged, such as monitoring alerts to your own team |
 | `staging_guard_allowlist` | filter | `( string[] $allowlist )`. Addresses and `@domains` that still get email |
+| `staging_guard_redirect_subject` | filter | `( string $subject, string[] $stopped, array $atts )`. Subject of a redirected email. Default `[STAGING → original recipients] Subject` |
+| `staging_guard_noindex` | filter | `( bool $noindex )`. Whether staging copies are hidden from search engines |
+| `staging_guard_robots_txt` | filter | `( string $output )`. The robots.txt a staging copy serves |
+| `staging_guard_colours` | filter | `( array $colours )`. Admin bar colour per environment type. Anything but a hex colour falls back to the default |
+| `staging_guard_environment_label` | filter | `( string $label, string $type )`. The environment name in the admin bar and on the screens, such as "UAT" |
+| `staging_guard_log_size` | filter | `( int $size )`. Stopped emails the log keeps at most. Default 1000 |
 | `staging_guard_log_days` | filter | `( int $days )`. Days a stopped email stays in the log |
 | `staging_guard_capability` | filter | `( string $capability )`. Who may see and change Staging Guard. Default `manage_options`, or `manage_network_options` on multisite |
 | `staging_guard_mail_stopped` | action | `( array $entry, array $atts )`. Fires when an email is blocked or redirected. `$entry` has `id`, `to`, `subject`, `action`, `delivered` and `body` |
+| `staging_guard_production_locked` | action | `( string $domain )`. The production lock was set on this domain |
+| `staging_guard_production_unlocked` | action | The production lock was removed |
 
 ## Changing the detected environment
 

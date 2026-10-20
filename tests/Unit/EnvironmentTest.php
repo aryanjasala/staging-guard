@@ -20,6 +20,11 @@ final class EnvironmentTest extends TestCase {
 		Functions\when( 'wp_parse_url' )->alias( 'parse_url' );
 		Functions\when( 'wp_get_environment_type' )->justReturn( 'production' );
 		Functions\when( 'home_url' )->justReturn( 'https://www.example.com' );
+		Functions\when( 'sanitize_hex_color' )->alias(
+			static function ( $colour ) {
+				return preg_match( '/^#[0-9a-f]{6}$/i', (string) $colour ) ? $colour : null;
+			}
+		);
 	}
 
 	private function environment( string $production_hash = '' ): Environment {
@@ -50,6 +55,19 @@ final class EnvironmentTest extends TestCase {
 		$this->assertTrue( $environment->is_guarded() );
 		$this->assertSame( '#b34700', $environment->colour() );
 		$this->assertTrue( $environment->is_staging_by_lock() );
+	}
+
+	public function test_colours_and_labels_can_be_filtered_but_stay_valid(): void {
+		$environment = $this->environment( Environment::hash( 'live.example.com' ) );
+
+		Filters\expectApplied( 'staging_guard_colours' )->once()->andReturn( array( 'staging' => '#6b21a8' ) );
+		$this->assertSame( '#6b21a8', $environment->colour() );
+
+		Filters\expectApplied( 'staging_guard_colours' )->once()->andReturn( array( 'staging' => 'red; background: url(x)' ) );
+		$this->assertSame( '#b34700', $environment->colour(), 'Anything but a hex colour falls back.' );
+
+		Filters\expectApplied( 'staging_guard_environment_label' )->andReturn( 'UAT' );
+		$this->assertSame( 'UAT', $environment->label() );
 	}
 
 	public function test_a_lock_set_with_or_without_www_still_matches(): void {

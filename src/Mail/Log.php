@@ -120,6 +120,20 @@ final class Log implements Service {
 	}
 
 	/**
+	 * Most entries the log keeps.
+	 *
+	 * @return int
+	 */
+	public function max_entries(): int {
+		/**
+		 * Filters how many stopped emails the log keeps at most.
+		 *
+		 * @param int $size Default 1000.
+		 */
+		return max( 1, (int) apply_filters( 'staging_guard_log_size', self::MAX_ENTRIES ) );
+	}
+
+	/**
 	 * Adds an entry.
 	 *
 	 * @param array $entry {
@@ -176,7 +190,7 @@ final class Log implements Service {
 			array(
 				'post_type'        => self::POST_TYPE,
 				'post_status'      => 'publish',
-				'numberposts'      => max( 1, min( self::MAX_ENTRIES, $limit ) ),
+				'numberposts'      => max( 1, min( $this->max_entries(), $limit ) ),
 				'orderby'          => array(
 					'date' => 'DESC',
 					'ID'   => 'DESC',
@@ -259,7 +273,7 @@ final class Log implements Service {
 			}
 		}
 
-		$extra = (int) wp_count_posts( self::POST_TYPE )->publish - self::MAX_ENTRIES;
+		$extra = (int) wp_count_posts( self::POST_TYPE )->publish - $this->max_entries();
 		while ( $extra > 0 ) {
 			$ids = $this->ids( array( 'order' => 'ASC' ), min( $extra, self::BATCH ) );
 			if ( ! $ids ) {

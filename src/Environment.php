@@ -143,7 +143,13 @@ final class Environment {
 		);
 		$type   = $type ?? $this->type();
 
-		return $labels[ $type ] ?? ucfirst( $type );
+		/**
+		 * Filters the name of an environment, shown in the admin bar and on the screens.
+		 *
+		 * @param string $label Default Production, Staging, Development or Local.
+		 * @param string $type  Environment type.
+		 */
+		return (string) apply_filters( 'staging_guard_environment_label', $labels[ $type ] ?? ucfirst( $type ), $type );
 	}
 
 	/**
@@ -152,7 +158,15 @@ final class Environment {
 	 * @return string Hex colour.
 	 */
 	public function colour(): string {
-		return self::COLOURS[ $this->type() ] ?? self::COLOURS['staging'];
+		/**
+		 * Filters the admin bar colour of each environment.
+		 *
+		 * @param array<string, string> $colours Environment type => hex colour.
+		 */
+		$colours = (array) apply_filters( 'staging_guard_colours', self::COLOURS );
+		$colour  = (string) ( $colours[ $this->type() ] ?? self::COLOURS['staging'] );
+
+		return (string) ( sanitize_hex_color( $colour ) ?? self::COLOURS['staging'] );
 	}
 
 	/**
@@ -258,6 +272,13 @@ final class Environment {
 	public function lock(): void {
 		$this->settings->update( array( 'production_hash' => self::hash( $this->domain() ) ) );
 		$this->detected = null;
+
+		/**
+		 * Fires after the production lock is set on this domain.
+		 *
+		 * @param string $domain The domain now counted as the live site.
+		 */
+		do_action( 'staging_guard_production_locked', $this->domain() );
 	}
 
 	/**
@@ -266,6 +287,11 @@ final class Environment {
 	public function unlock(): void {
 		$this->settings->update( array( 'production_hash' => '' ) );
 		$this->detected = null;
+
+		/**
+		 * Fires after the production lock is removed.
+		 */
+		do_action( 'staging_guard_production_unlocked' );
 	}
 
 	/**

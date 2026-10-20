@@ -11,6 +11,7 @@ use AryanX\StagingGuard\Environment;
 use AryanX\StagingGuard\Mail\Guard;
 use AryanX\StagingGuard\Mail\Log;
 use AryanX\StagingGuard\Settings;
+use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 
 final class MailGuardTest extends TestCase {
@@ -69,6 +70,42 @@ final class MailGuardTest extends TestCase {
 		$environment = new Environment( $store );
 
 		return new Guard( $store, $environment, new Log( $store ) );
+	}
+
+	public function test_a_filter_can_let_one_email_through_untouched(): void {
+		$guard = $this->guard( array( 'mail_mode' => 'block' ) );
+		$atts  = array(
+			'to'      => 'oncall@example.com',
+			'subject' => 'Disk almost full',
+			'message' => 'Alert',
+		);
+		Filters\expectApplied( 'staging_guard_allow_email' )->once()->andReturn( true );
+
+		$this->assertSame( $atts, $guard->filter_mail( $atts ) );
+		$this->assertNull( $guard->short_circuit( null, $atts ) );
+		$this->assertSame( array(), $this->logged, 'Allowed email is not logged.' );
+	}
+
+	public function test_the_policy_filter_can_switch_modes_but_not_skip_the_address_check(): void {
+		$guard = $this->guard( array( 'mail_mode' => 'block' ) );
+
+		Filters\expectApplied( 'staging_guard_mail_policy' )->once()->andReturn(
+			array(
+				'mode'        => 'redirect',
+				'redirect_to' => 'qa@agency.test',
+				'allowlist'   => array(),
+			)
+		);
+		$this->assertSame( 'redirect', $guard->policy()['mode'] );
+
+		Filters\expectApplied( 'staging_guard_mail_policy' )->once()->andReturn(
+			array(
+				'mode'        => 'redirect',
+				'redirect_to' => 'nope',
+				'allowlist'   => array(),
+			)
+		);
+		$this->assertSame( 'block', $guard->policy()['mode'] );
 	}
 
 	public function test_split_accepts_strings_and_arrays_and_drops_blanks(): void {

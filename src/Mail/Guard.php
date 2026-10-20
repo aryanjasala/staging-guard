@@ -105,12 +105,34 @@ final class Guard implements Service {
 			$mode = 'block';
 		}
 
-		return array(
+		$policy = array(
 			'mode'        => $mode,
 			'redirect_to' => $to,
 			'allowlist'   => $allowlist,
 			'locked'      => defined( 'STAGING_GUARD_MAIL_MODE' ) || defined( 'STAGING_GUARD_REDIRECT_TO' ) || defined( 'STAGING_GUARD_ALLOWLIST' ),
 		);
+
+		/**
+		 * Filters how email is handled on this copy, after settings and constants.
+		 *
+		 * For example, redirect on staging but block on development. A redirect
+		 * without a valid address still falls back to blocking.
+		 *
+		 * @param array $policy {
+		 *     @type string   $mode        block, redirect or allow.
+		 *     @type string   $redirect_to Test address for redirect mode.
+		 *     @type string[] $allowlist   Addresses and @domains that still get email.
+		 *     @type bool     $locked      Whether wp-config.php constants fix the settings.
+		 * }
+		 * @param string $environment Environment type: staging, development or local.
+		 */
+		$policy = (array) apply_filters( 'staging_guard_mail_policy', $policy, $this->environment->type() );
+
+		if ( ! in_array( $policy['mode'] ?? '', Settings::MAIL_MODES, true ) || ( 'redirect' === $policy['mode'] && ! is_email( $policy['redirect_to'] ?? '' ) ) ) {
+			$policy['mode'] = 'block';
+		}
+
+		return $policy;
 	}
 
 	/**
@@ -162,7 +184,16 @@ final class Guard implements Service {
 		$this->block_next = false;
 		$policy           = $this->policy();
 
-		if ( 'allow' === $policy['mode'] ) {
+		/**
+		 * Filters whether one email goes out untouched, whoever it is for.
+		 *
+		 * For mail that must work on staging, such as monitoring alerts to
+		 * your own team. It is not logged.
+		 *
+		 * @param bool  $allow Default false.
+		 * @param array $atts  Arguments passed to wp_mail().
+		 */
+		if ( 'allow' === $policy['mode'] || apply_filters( 'staging_guard_allow_email', false, $atts ) ) {
 			return $atts;
 		}
 
@@ -186,8 +217,15 @@ final class Guard implements Service {
 		);
 
 		if ( 'redirect' === $policy['mode'] ) {
-			$atts['to']      = array_merge( $allowed, array( $policy['redirect_to'] ) );
-			$atts['subject'] = sprintf( '[%s → %s] %s', strtoupper( $this->environment->label() ), implode( ', ', $stopped ), $entry['subject'] );
+			$atts['to'] = array_merge( $allowed, array( $policy['redirect_to'] ) );
+			/**
+			 * Filters the subject of a redirected email.
+			 *
+			 * @param string   $subject Default "[STAGING → original recipients] Original subject".
+			 * @param string[] $stopped Recipients who did not get it.
+			 * @param array    $atts    Arguments passed to wp_mail().
+			 */
+			$atts['subject'] = (string) apply_filters( 'staging_guard_redirect_subject', sprintf( '[%s → %s] %s', strtoupper( $this->environment->label() ), implode( ', ', $stopped ), $entry['subject'] ), $stopped, $atts );
 			$this->stopped( array( 'action' => 'redirected' ) + $entry, $atts );
 
 			return $atts;
