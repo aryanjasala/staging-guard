@@ -15,8 +15,36 @@ use Brain\Monkey\Functions;
 
 final class MailGuardTest extends TestCase {
 
+	/**
+	 * Log entries written through wp_insert_post(), newest last.
+	 *
+	 * @var array[]
+	 */
+	private array $logged = array();
+
+	/**
+	 * The meta of the newest log entry.
+	 *
+	 * @return array
+	 */
+	private function last_entry(): array {
+		$this->assertNotEmpty( $this->logged, 'Nothing was logged.' );
+
+		return end( $this->logged )['meta_input'];
+	}
+
 	protected function setUp(): void {
 		parent::setUp();
+
+		$this->logged = array();
+		Functions\when( 'wp_insert_post' )->alias(
+			function ( array $post ) {
+				$this->logged[] = $post;
+				return count( $this->logged );
+			}
+		);
+		Functions\when( 'wp_slash' )->returnArg();
+		Functions\when( 'is_wp_error' )->justReturn( false );
 
 		Functions\when( 'is_email' )->alias(
 			static function ( $email ) {
@@ -87,10 +115,11 @@ final class MailGuardTest extends TestCase {
 		$this->assertTrue( $guard->short_circuit( null, array() ) );
 		$this->assertNull( $guard->short_circuit( null, array() ), 'Only the email that was blocked is stopped.' );
 
-		$entry = $this->options[ Log::OPTION ][0];
-		$this->assertSame( 'blocked', $entry['action'] );
-		$this->assertSame( 'customer@example.com', $entry['to'] );
-		$this->assertSame( '', $entry['body'], 'Bodies are not kept unless the setting is on.' );
+		$entry = $this->last_entry();
+		$this->assertSame( 'blocked', $entry['_staging_guard_action'] );
+		$this->assertSame( 'customer@example.com', $entry['_staging_guard_to'] );
+		$this->assertSame( '', $entry['_staging_guard_body'], 'Bodies are not kept unless the setting is on.' );
+		$this->assertSame( Log::POST_TYPE, $this->logged[0]['post_type'] );
 	}
 
 	public function test_block_mode_still_delivers_to_allowlisted_recipients(): void {
@@ -112,7 +141,7 @@ final class MailGuardTest extends TestCase {
 		$this->assertSame( array( 'dev@agency.test' ), $atts['to'] );
 		$this->assertSame( array( 'Cc: lead@agency.test', 'From: Shop <shop@example.com>' ), $atts['headers'] );
 		$this->assertNull( $guard->short_circuit( null, array() ) );
-		$this->assertSame( 'partly_blocked', $this->options[ Log::OPTION ][0]['action'] );
+		$this->assertSame( 'partly_blocked', $this->last_entry()['_staging_guard_action'] );
 	}
 
 	public function test_redirect_mode_sends_to_the_test_address_with_the_real_recipients_in_the_subject(): void {
@@ -137,7 +166,7 @@ final class MailGuardTest extends TestCase {
 		$this->assertSame( array( 'dev@agency.test', 'qa@agency.test' ), $atts['to'] );
 		$this->assertSame( '[STAGING → customer@example.com, audit@example.com] Your order', $atts['subject'] );
 		$this->assertSame( array(), $atts['headers'] );
-		$this->assertSame( 'Order body', $this->options[ Log::OPTION ][0]['body'] );
+		$this->assertSame( 'Order body', $this->last_entry()['_staging_guard_body'] );
 	}
 
 	public function test_allow_mode_leaves_email_alone(): void {
@@ -148,6 +177,6 @@ final class MailGuardTest extends TestCase {
 		);
 
 		$this->assertSame( $atts, $guard->filter_mail( $atts ) );
-		$this->assertArrayNotHasKey( Log::OPTION, $this->options );
+		$this->assertSame( array(), $this->logged );
 	}
 }

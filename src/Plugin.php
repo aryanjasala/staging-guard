@@ -8,6 +8,7 @@
 namespace AryanX\StagingGuard;
 
 use AryanX\StagingGuard\Admin\AdminBar;
+use AryanX\StagingGuard\Admin\LockNotice;
 use AryanX\StagingGuard\Admin\SettingsPage;
 use AryanX\StagingGuard\Cli\Command;
 use AryanX\StagingGuard\Health\SiteHealth;
@@ -96,8 +97,10 @@ final class Plugin {
 	 */
 	private function register(): void {
 		$services = array(
+			$this->mail->log(),
 			new SettingsPage( $this->settings, $this->environment, $this->mail ),
 			new SiteHealth( $this->settings, $this->environment, $this->mail ),
+			new LockNotice( $this->environment ),
 		);
 
 		if ( $this->environment->is_guarded() ) {

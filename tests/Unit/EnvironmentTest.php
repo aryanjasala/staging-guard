@@ -9,6 +9,7 @@ namespace AryanX\StagingGuard\Tests\Unit;
 
 use AryanX\StagingGuard\Environment;
 use AryanX\StagingGuard\Settings;
+use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 
 final class EnvironmentTest extends TestCase {
@@ -48,6 +49,35 @@ final class EnvironmentTest extends TestCase {
 		$this->assertSame( 'staging', $environment->type() );
 		$this->assertTrue( $environment->is_guarded() );
 		$this->assertSame( '#b34700', $environment->colour() );
+		$this->assertTrue( $environment->is_staging_by_lock() );
+	}
+
+	public function test_a_lock_set_with_or_without_www_still_matches(): void {
+		// The site runs on www.example.com. A lock set on the bare domain still counts.
+		$this->assertSame( 'production', $this->environment( Environment::hash( 'example.com' ) )->type() );
+
+		Functions\when( 'home_url' )->justReturn( 'https://example.com' );
+		$this->assertSame( 'production', $this->environment( Environment::hash( 'www.example.com' ) )->type() );
+		$this->assertFalse( $this->environment( Environment::hash( 'www.example.com' ) )->is_staging_by_lock() );
+	}
+
+	public function test_production_hosts_decide_before_the_lock(): void {
+		Filters\expectApplied( 'staging_guard_production_hosts' )->andReturn( array( ' Shop.Example.com ', 'example.com' ) );
+
+		// The lock points elsewhere, but www.example.com matches example.com in the hosts list.
+		$environment = $this->environment( Environment::hash( 'live.example.org' ) );
+		$this->assertSame( 'production', $environment->type() );
+		$this->assertSame( 'hosts', $environment->source() );
+		$this->assertSame( array( 'shop.example.com', 'example.com' ), $environment->production_hosts() );
+		$this->assertFalse( $environment->is_staging_by_lock() );
+	}
+
+	public function test_a_domain_outside_the_production_hosts_is_staging(): void {
+		Filters\expectApplied( 'staging_guard_production_hosts' )->andReturn( array( 'shop.example.com' ) );
+
+		$environment = $this->environment();
+		$this->assertSame( 'staging', $environment->type() );
+		$this->assertSame( 'hosts', $environment->source() );
 	}
 
 	public function test_the_hash_survives_search_replace_and_ignores_case(): void {

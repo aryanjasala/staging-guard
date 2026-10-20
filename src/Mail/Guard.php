@@ -94,6 +94,13 @@ final class Guard implements Service {
 		$to        = defined( 'STAGING_GUARD_REDIRECT_TO' ) ? (string) STAGING_GUARD_REDIRECT_TO : (string) $this->settings->get( 'redirect_to' );
 		$allowlist = defined( 'STAGING_GUARD_ALLOWLIST' ) ? Settings::parse_allowlist( (string) STAGING_GUARD_ALLOWLIST ) : (array) $this->settings->get( 'allowlist' );
 
+		/**
+		 * Filters the addresses and @domains that still get email on a staging copy.
+		 *
+		 * @param string[] $allowlist Lowercase addresses and @domains.
+		 */
+		$allowlist = array_values( array_filter( array_map( 'strtolower', array_map( 'strval', (array) apply_filters( 'staging_guard_allowlist', $allowlist ) ) ) ) );
+
 		if ( ! in_array( $mode, Settings::MAIL_MODES, true ) || ( 'redirect' === $mode && ! is_email( $to ) ) ) {
 			$mode = 'block';
 		}
@@ -181,22 +188,40 @@ final class Guard implements Service {
 		if ( 'redirect' === $policy['mode'] ) {
 			$atts['to']      = array_merge( $allowed, array( $policy['redirect_to'] ) );
 			$atts['subject'] = sprintf( '[%s → %s] %s', strtoupper( $this->environment->label() ), implode( ', ', $stopped ), $entry['subject'] );
-			$this->log->add( array( 'action' => 'redirected' ) + $entry );
+			$this->stopped( array( 'action' => 'redirected' ) + $entry, $atts );
 
 			return $atts;
 		}
 
 		if ( $allowed ) {
 			$atts['to'] = $allowed;
-			$this->log->add( array( 'action' => 'partly_blocked' ) + $entry );
+			$this->stopped( array( 'action' => 'partly_blocked' ) + $entry, $atts );
 
 			return $atts;
 		}
 
 		$this->block_next = true;
-		$this->log->add( array( 'action' => 'blocked' ) + $entry );
+		$this->stopped( array( 'action' => 'blocked' ) + $entry, $atts );
 
 		return $atts;
+	}
+
+	/**
+	 * Logs a stopped email and tells other code about it.
+	 *
+	 * @param array $entry What happened: to, subject, action, delivered and body.
+	 * @param array $atts  The email as it now goes out, if it goes out at all.
+	 */
+	private function stopped( array $entry, array $atts ): void {
+		$entry['id'] = $this->log->add( $entry );
+
+		/**
+		 * Fires when Staging Guard blocks or redirects an email.
+		 *
+		 * @param array $entry What happened: id (log entry), to, subject, action (blocked, redirected or partly_blocked), delivered and body.
+		 * @param array $atts  The wp_mail() arguments after Staging Guard changed them.
+		 */
+		do_action( 'staging_guard_mail_stopped', $entry, $atts );
 	}
 
 	/**
@@ -226,8 +251,9 @@ final class Guard implements Service {
 	 * @return string blocked, redirected, partly_blocked, sent or failed.
 	 */
 	public function send_test( string $to ): string {
-		$before = $this->log->latest();
-		$sent   = wp_mail(
+		$before = $this->log->latest()['id'] ?? 0;
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.wp_mail_wp_mail -- One test email, sent on demand by an admin.
+		$sent = wp_mail(
 			$to,
 			/* translators: %s: site name. */
 			sprintf( __( 'Staging Guard test from %s', 'staging-guard' ), get_bloginfo( 'name' ) ),
@@ -240,7 +266,7 @@ final class Guard implements Service {
 		);
 		$after = $this->log->latest();
 
-		if ( $after && $after !== $before ) {
+		if ( $after && $after['id'] !== $before ) {
 			return (string) $after['action'];
 		}
 

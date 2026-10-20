@@ -4,18 +4,22 @@ const PAGE = '/wp-admin/tools.php?page=staging-guard';
 
 // The lab has no WP_ENVIRONMENT_TYPE, so these simulate the two real situations.
 const live = () => wp( 'option', 'delete', 'staging_guard_settings' );
+// The stopped email log, one private post per email.
+const clearLog = () =>
+	wpEval( `foreach ( get_posts( array( 'post_type' => 'staging_guard_mail', 'post_status' => 'any', 'numberposts' => 500, 'fields' => 'ids' ) ) as $id ) { wp_delete_post( $id, true ); }` );
 const copiedToStaging = () =>
 	wpEval( `update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'live.example.com' ) ), false );` );
 
 test.describe( 'Staging Guard', () => {
 	test.beforeEach( () => {
 		live();
-		wp( 'option', 'delete', 'staging_guard_mail_log' );
+		clearLog();
+		wpEval( `delete_user_meta( 1, 'staging_guard_lock_notice_dismissed' );` );
 	} );
 
 	test.afterAll( () => {
 		live();
-		wp( 'option', 'delete', 'staging_guard_mail_log' );
+		clearLog();
 	} );
 
 	test( 'leaves an unmarked site alone and recommends the production lock', async ( { page, request } ) => {
@@ -47,9 +51,32 @@ test.describe( 'Staging Guard', () => {
 		expect( await ( await request.get( '/robots.txt' ) ).text() ).toContain( 'Disallow: /' );
 		expect( ( await request.get( '/wp-sitemap.xml' ) ).status() ).toBe( 404 );
 
+		// Only the lock makes this copy staging, so Site Health and every admin screen say so.
 		await page.goto( '/wp-admin/site-health.php' );
-		// Passing checks sit in the collapsed "Passed tests" list.
-		await expect( page.getByText( 'This staging copy is guarded' ) ).toBeAttached();
+		await expect( page.getByText( 'This site is treated as staging because of the production lock' ) ).toBeVisible();
+
+		await page.goto( '/wp-admin/edit.php' );
+		const notice = page.locator( '.sg-lock-notice' );
+		await expect( notice ).toContainText( 'Staging Guard treats this site as staging.' );
+		await notice.getByRole( 'link', { name: 'This is staging, hide this' } ).click();
+		await expect( page.locator( '.sg-lock-notice' ) ).toHaveCount( 0 );
+		await page.goto( '/wp-admin/' );
+		await expect( page.locator( '.sg-lock-notice' ) ).toHaveCount( 0 );
+	} );
+
+	test( 'production hosts in wp-config decide before the lock', () => {
+		copiedToStaging();
+		// STAGING_GUARD_PRODUCTION_HOSTS feeds the same filter.
+		const detect = ( hosts ) =>
+			JSON.parse(
+				wpEval( `
+					add_filter( 'staging_guard_production_hosts', function () { return ${ hosts }; } );
+					echo wp_json_encode( ( new AryanX\\StagingGuard\\Environment( new AryanX\\StagingGuard\\Settings() ) )->detect() );
+				` )
+			);
+
+		expect( detect( `array( wp_parse_url( home_url(), PHP_URL_HOST ) . ':' . wp_parse_url( home_url(), PHP_URL_PORT ) )` ) ).toEqual( { type: 'production', source: 'hosts' } );
+		expect( detect( `array( 'shop.example.com' )` ) ).toEqual( { type: 'staging', source: 'hosts' } );
 	} );
 
 	test( 'blocks a test email and lists it', async ( { page } ) => {
@@ -64,6 +91,20 @@ test.describe( 'Staging Guard', () => {
 		await expect( row ).toContainText( 'customer@example.com' );
 		await expect( row ).toContainText( 'Staging Guard test from' );
 		await expect( row.locator( '.sg-badge' ) ).toHaveText( 'Blocked' );
+
+		// The log takes part in Tools > Export / Erase Personal Data.
+		const privacy = ( tool ) =>
+			JSON.parse(
+				wpEval( `
+					$tools = apply_filters( 'wp_privacy_personal_data_${ tool }s', array() );
+					echo wp_json_encode( call_user_func( $tools['staging-guard']['callback'], 'customer@example.com', 1 ) );
+				` )
+			);
+		const exported = privacy( 'exporter' );
+		expect( exported.data ).toHaveLength( 1 );
+		expect( exported.data[ 0 ].data.find( ( field ) => field.name === 'To' ).value ).toBe( 'customer@example.com' );
+		expect( privacy( 'eraser' ) ).toMatchObject( { items_removed: true, done: true } );
+		expect( wp( 'staging-guard', 'log', '--format=count' ) ).toBe( '0' );
 	} );
 
 	test( 'redirect mode keeps allowlisted recipients and strips everyone else', async ( { page } ) => {
@@ -110,9 +151,9 @@ test.describe( 'Staging Guard', () => {
 		await page.getByRole( 'button', { name: 'Remove production lock' } ).click();
 		await expect( page.locator( '.sg-pill' ) ).toHaveText( 'Production' );
 
-		await page.getByRole( 'button', { name: /This is the live site: lock to localhost:8895/ } ).click();
+		await page.getByRole( 'button', { name: /This is the live site: lock to localhost:\d+/ } ).click();
 		await expect( page.locator( '.notice-success' ) ).toContainText( 'Production is locked to this domain' );
-		await expect( page.locator( '.sg-card' ).first() ).toContainText( 'matches this domain (localhost:8895)' );
+		await expect( page.locator( '.sg-card' ).first() ).toContainText( /matches this domain \(localhost:\d+\)/ );
 	} );
 
 	test( 'WP-CLI reports status and tests email', () => {
