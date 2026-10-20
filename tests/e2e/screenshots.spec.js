@@ -1,14 +1,14 @@
 // Regenerates .wordpress-org/screenshot-N.png (readme.txt "== Screenshots ==" and README.md).
 // Run on demand: npm run screenshots
-const path = require( 'path' );
 const { test, expect, wp, wpEval } = require( './utils' );
-
-const shot = ( page, number, options = {} ) => page.screenshot( { path: path.join( __dirname, '..', '..', '.wordpress-org', `screenshot-${ number }.png` ), ...options } );
+const { prepareSite, shot } = require( './utils/media' );
 
 test.describe( 'Screenshots', () => {
-	test.use( { viewport: { width: 1280, height: 900 } } );
+	test.use( { viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 } );
+	let post;
 
 	test.beforeAll( () => {
+		prepareSite( 'Example Shop' );
 		// A copy of a live site that runs on another domain, with a team allowlist and kept bodies.
 		wpEval( `update_option( 'staging_guard_settings', array(
 			'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ),
@@ -22,17 +22,19 @@ test.describe( 'Screenshots', () => {
 			wp_mail( array( 'priya@example.org', 'dev@youragency.com' ), 'New comment on "Spring menu"', 'A new comment is waiting for approval.', $from );
 			wp_mail( 'admin@example.com', '[Example Shop] Password reset', 'Someone requested a password reset for your account.', $from );
 		` );
+		post = wp( 'post', 'create', '--post_title=Spring menu is here', '--post_status=publish', '--post_content=Three new dishes and a lemon tart.', '--porcelain' );
 	} );
 
 	test.afterAll( () => {
 		wp( 'option', 'delete', 'staging_guard_settings' );
 		wp( 'option', 'delete', 'staging_guard_mail_log' );
+		wp( 'post', 'delete', post, '--force' );
 	} );
 
 	test( '1: the coloured admin bar on a staging copy', async ( { page } ) => {
-		await page.goto( '/wp-admin/' );
+		await page.goto( '/' );
 		await expect( page.locator( '#wp-admin-bar-staging-guard' ) ).toHaveText( 'Staging' );
-		await shot( page, 1, { clip: { x: 0, y: 0, width: 1280, height: 420 } } );
+		await shot( page, 1, { clip: { x: 0, y: 0, width: 1280, height: 480 } } );
 	} );
 
 	test( '2: Tools > Staging Guard with the email log', async ( { page } ) => {

@@ -1,3 +1,5 @@
+<p align="center"><img src=".wordpress-org/icon-256x256.png" alt="" width="88"></p>
+
 <h1 align="center">Staging Guard</h1>
 
 <p align="center">
@@ -17,7 +19,7 @@
 <p align="center">Stop staging copies from emailing real customers or showing up in Google, and color the admin bar so nobody edits the wrong copy.</p>
 
 <p align="center">
-  <img src=".wordpress-org/screenshot-2.png" alt="Tools > Staging Guard with the email log" width="880">
+  <img src=".github/media/demo.gif" alt="A staging copy with the orange admin bar blocking a test email, then sending email to one test inbox instead" width="880">
 </p>
 
 ---
@@ -64,6 +66,7 @@ It decides a copy is not live from `WP_ENVIRONMENT_TYPE` when that is set, other
 <table>
   <tr>
     <td width="50%" valign="top"><img src=".wordpress-org/screenshot-1.png" alt="The coloured admin bar on a staging copy"><br><sub>The coloured admin bar on a staging copy</sub></td>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-2.png" alt="Tools > Staging Guard with the email log"><br><sub>Tools > Staging Guard with the email log</sub></td>
   </tr>
 </table>
 
