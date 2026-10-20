@@ -156,6 +156,31 @@ test.describe( 'Staging Guard', () => {
 		await expect( page.locator( '.sg-card' ).first() ).toContainText( /matches this domain \(localhost:\d+\)/ );
 	} );
 
+	test( 'abilities: an agent can ask which copy this is, test email and read the log', async ( { rest } ) => {
+		const run = ( name, method, input ) => rest( method, `/wp-abilities/v1/abilities/staging-guard/${ name }/run`, input ? { input } : undefined );
+
+		const listed = await rest( 'GET', '/wp-abilities/v1/abilities?category=staging-guard' );
+		expect( listed.body.map( ( ability ) => ability.name ).sort() ).toEqual( [ 'staging-guard/get-environment', 'staging-guard/get-mail-log', 'staging-guard/send-test-email' ] );
+
+		expect( ( await run( 'get-environment', 'GET' ) ).body ).toMatchObject( { environment: 'production', is_live_site: true, source: 'default', email: 'allow' } );
+
+		copiedToStaging();
+		const staging = ( await run( 'get-environment', 'GET' ) ).body;
+		expect( staging ).toMatchObject( { environment: 'staging', is_live_site: false, source: 'lock', email: 'block', noindex: true } );
+		expect( staging.explanation ).toContain( 'different domain' );
+
+		const sent = await run( 'send-test-email', 'POST', { to: 'customer@example.com' } );
+		expect( sent.status ).toBe( 200 );
+		expect( sent.body ).toEqual( { result: 'blocked' } );
+
+		const invalid = await run( 'send-test-email', 'POST', { to: 'not an email' } );
+		expect( invalid.status ).toBe( 400 );
+
+		const log = await run( 'get-mail-log', 'GET' );
+		expect( log.body ).toHaveLength( 1 );
+		expect( log.body[ 0 ] ).toMatchObject( { to: 'customer@example.com', action: 'blocked' } );
+	} );
+
 	test( 'WP-CLI reports status and tests email', () => {
 		copiedToStaging();
 

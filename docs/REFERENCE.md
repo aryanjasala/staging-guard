@@ -56,6 +56,16 @@ add_filter( 'staging_guard_environment', function ( array $environment ) {
 } );
 ```
 
+## Abilities
+
+On WordPress 6.9 and later, Staging Guard registers [abilities](https://developer.wordpress.org/apis/abilities/), which AI agents find and run through the [MCP adapter](https://github.com/WordPress/mcp-adapter) and anything else through the REST API under `/wp-abilities/v1/`.
+
+| Ability | Does | Needs |
+| --- | --- | --- |
+| `staging-guard/get-environment` | Read-only. Production, staging, development or local, how that was decided, and what happens to email and search engines. An agent should ask this before sending email, importing data or changing settings | `edit_posts`. Where redirected email goes is only shown with the Staging Guard capability |
+| `staging-guard/get-mail-log` | Read-only. Stopped email, newest first. Input: `limit` | the Staging Guard capability |
+| `staging-guard/send-test-email` | Sends a test email to `to` and says what happened to it. On the live site it really sends | the Staging Guard capability |
+
 ## WP-CLI
 
 ```sh
