@@ -26,6 +26,9 @@
 
 Every agency has a staging story: a copy of the live database goes to staging and emails every customer, Google indexes it, or someone spends an hour editing it thinking it was live. Staging Guard prevents all three on every copy that is not production, and does nothing on the live site.
 
+> [!NOTE]
+> Free and open source under the GPL. No pro version, no upsells, no ads in wp-admin, no tracking. And it stays that way.
+
 ## Features
 
 - **Email**: blocked, or sent to one test address with the real recipients in the subject. Cc and Bcc stripped
@@ -102,6 +105,17 @@ tests/
 .wordpress-org/            screenshots
 docs/                      reference, development, contributing, releasing
 ```
+
+## More free plugins
+
+Small plugins that each fill one gap in WordPress, all free with no pro version:
+
+| | Plugin | What it does |
+| --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/aryanjasala/template-usage-column/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Template Usage Column](https://github.com/aryanjasala/template-usage-column) | See which template every page uses, and fix the pages on a missing template |
+| <img src="https://raw.githubusercontent.com/aryanjasala/term-trash/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Term Trash](https://github.com/aryanjasala/term-trash) | A trash for categories, tags and custom terms, with undo and full restore |
+| <img src="https://raw.githubusercontent.com/aryanjasala/deploy-freeze/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Deploy Freeze](https://github.com/aryanjasala/deploy-freeze) | Read-only mode for WordPress during migrations and deploys |
+| <img src="https://raw.githubusercontent.com/aryanjasala/restore-one-block/main/.wordpress-org/icon-128x128.png" alt="" width="32"> | [Restore One Block](https://github.com/aryanjasala/restore-one-block) | Restore a single block from an old revision, not the whole post |
 
 ## License
 

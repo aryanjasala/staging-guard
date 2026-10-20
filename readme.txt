@@ -33,6 +33,8 @@ Staging Guard prevents all three, on every copy that is not the live site.
 
 **On the live site it does nothing.**
 
+Free and open source under the GPL. No pro version, no upsells, no ads in wp-admin, no tracking. And it stays that way.
+
 = How it knows which copy is live =
 
 1. If `WP_ENVIRONMENT_TYPE` is set in wp-config.php or in the server environment, it uses that. This is the WordPress standard, and many hosts set it for you.
