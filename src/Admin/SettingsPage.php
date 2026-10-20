@@ -1,0 +1,433 @@
+<?php
+/**
+ * Tools > Staging Guard.
+ *
+ * @package AryanX\StagingGuard
+ */
+
+namespace AryanX\StagingGuard\Admin;
+
+use AryanX\StagingGuard\Environment;
+use AryanX\StagingGuard\Mail\Guard;
+use AryanX\StagingGuard\Service;
+use AryanX\StagingGuard\Settings;
+use const AryanX\StagingGuard\PLUGIN_FILE;
+use const AryanX\StagingGuard\VERSION;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Status, settings, production lock, test email and the stopped email log.
+ */
+final class SettingsPage implements Service {
+
+	public const SLUG = 'staging-guard';
+
+	private const ACTION = 'staging_guard';
+
+	/**
+	 * Saved settings.
+	 *
+	 * @var Settings
+	 */
+	private Settings $settings;
+
+	/**
+	 * Environment detection.
+	 *
+	 * @var Environment
+	 */
+	private Environment $environment;
+
+	/**
+	 * Email guard.
+	 *
+	 * @var Guard
+	 */
+	private Guard $mail;
+
+	/**
+	 * Sets up the screen.
+	 *
+	 * @param Settings    $settings    Saved settings.
+	 * @param Environment $environment Environment detection.
+	 * @param Guard       $mail        Email guard.
+	 */
+	public function __construct( Settings $settings, Environment $environment, Guard $mail ) {
+		$this->settings    = $settings;
+		$this->environment = $environment;
+		$this->mail        = $mail;
+	}
+
+	/**
+	 * Adds the menu entry and form handler.
+	 */
+	public function register(): void {
+		add_action( 'admin_menu', array( $this, 'add_page' ) );
+		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_form' ) );
+		add_filter( 'plugin_action_links_' . plugin_basename( PLUGIN_FILE ), array( $this, 'add_settings_link' ) );
+	}
+
+	/**
+	 * Registers Tools > Staging Guard.
+	 */
+	public function add_page(): void {
+		$hook = add_management_page(
+			__( 'Staging Guard', 'staging-guard' ),
+			__( 'Staging Guard', 'staging-guard' ),
+			'manage_options',
+			self::SLUG,
+			array( $this, 'render' )
+		);
+
+		if ( $hook ) {
+			add_action( "admin_print_styles-{$hook}", array( $this, 'enqueue_styles' ) );
+		}
+	}
+
+	/**
+	 * Adds a Settings link on the Plugins screen.
+	 *
+	 * @param string[] $links Action links.
+	 * @return string[]
+	 */
+	public function add_settings_link( array $links ): array {
+		array_unshift( $links, sprintf( '<a href="%s">%s</a>', esc_url( admin_url( 'tools.php?page=' . self::SLUG ) ), esc_html__( 'Settings', 'staging-guard' ) ) );
+
+		return $links;
+	}
+
+	/**
+	 * Screen styles.
+	 */
+	public function enqueue_styles(): void {
+		wp_enqueue_style( 'staging-guard-admin', plugins_url( 'assets/admin.css', PLUGIN_FILE ), array(), VERSION );
+	}
+
+	/**
+	 * Prints the screen.
+	 */
+	public function render(): void {
+		$guarded = $this->environment->is_guarded();
+		$policy  = $this->mail->policy();
+		$log     = $this->mail->log()->all();
+		$today   = $this->mail->log()->count_since( time() - DAY_IN_SECONDS );
+		?>
+		<div class="wrap sg-page">
+			<h1 class="sg-title">
+				<?php esc_html_e( 'Staging Guard', 'staging-guard' ); ?>
+				<span class="sg-pill" style="background:<?php echo esc_attr( $this->environment->colour() ); ?>"><?php echo esc_html( $this->environment->label() ); ?></span>
+			</h1>
+
+			<?php $this->render_notices(); ?>
+
+			<div class="sg-cards">
+				<div class="sg-card <?php echo $guarded ? 'is-on' : 'is-off'; ?>">
+					<h2><?php esc_html_e( 'This copy', 'staging-guard' ); ?></h2>
+					<p class="sg-card__value"><?php echo esc_html( $this->environment->label() ); ?> &middot; <?php echo $guarded ? esc_html__( 'guards on', 'staging-guard' ) : esc_html__( 'guards off', 'staging-guard' ); ?></p>
+					<p><?php echo esc_html( $this->environment->explain() ); ?></p>
+				</div>
+				<div class="sg-card <?php echo ( $guarded && 'allow' !== $policy['mode'] ) ? 'is-on' : 'is-off'; ?>">
+					<h2><?php esc_html_e( 'Email', 'staging-guard' ); ?></h2>
+					<p class="sg-card__value"><?php echo esc_html( $guarded ? $this->mail->describe() : __( 'Sent normally (live site)', 'staging-guard' ) ); ?></p>
+					<p>
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: number of emails. */
+								_n( '%d email stopped in the last 24 hours.', '%d emails stopped in the last 24 hours.', $today, 'staging-guard' ),
+								$today
+							)
+						);
+						?>
+					</p>
+				</div>
+				<div class="sg-card <?php echo ( $guarded && $this->settings->get( 'noindex' ) ) ? 'is-on' : 'is-off'; ?>">
+					<h2><?php esc_html_e( 'Search engines', 'staging-guard' ); ?></h2>
+					<p class="sg-card__value">
+						<?php
+						if ( ! $guarded ) {
+							esc_html_e( 'Not changed (live site)', 'staging-guard' );
+						} elseif ( $this->settings->get( 'noindex' ) ) {
+							esc_html_e( 'Hidden', 'staging-guard' );
+						} else {
+							esc_html_e( 'Not hidden', 'staging-guard' );
+						}
+						?>
+					</p>
+					<p><?php esc_html_e( 'Noindex header and meta tag, a blocking robots.txt, and no sitemap.', 'staging-guard' ); ?></p>
+				</div>
+			</div>
+
+			<?php if ( $this->mail->wp_mail_is_replaced() ) : ?>
+				<div class="notice notice-error inline"><p><?php esc_html_e( 'Another plugin has replaced the wp_mail() function, so Staging Guard cannot stop or redirect email on this site. Turn off sending in that plugin on staging.', 'staging-guard' ); ?></p></div>
+			<?php endif; ?>
+
+			<div class="sg-columns">
+				<div class="sg-panel">
+					<h2><?php esc_html_e( 'When this is not the live site', 'staging-guard' ); ?></h2>
+					<?php $this->render_settings_form( $policy ); ?>
+				</div>
+
+				<div class="sg-side">
+					<?php if ( 'constant' !== $this->environment->source() ) : ?>
+						<div class="sg-panel">
+							<h2><?php esc_html_e( 'Production lock', 'staging-guard' ); ?></h2>
+							<p><?php esc_html_e( 'Set this once on the live site. Every copy of its database on another domain is then treated as staging, with no change to wp-config.php.', 'staging-guard' ); ?></p>
+							<?php
+							if ( $this->environment->is_locked() ) {
+								$this->render_button( 'unlock', __( 'Remove production lock', 'staging-guard' ) );
+							} else {
+								/* translators: %s: domain name. */
+								$this->render_button( 'lock', sprintf( __( 'This is the live site: lock to %s', 'staging-guard' ), $this->environment->domain() ), 'primary' );
+							}
+							?>
+						</div>
+					<?php endif; ?>
+
+					<div class="sg-panel">
+						<h2><?php esc_html_e( 'Send a test email', 'staging-guard' ); ?></h2>
+						<p><?php echo esc_html( $guarded ? __( 'See what happens to email from this copy.', 'staging-guard' ) : __( 'This is the live site, so the test email is really sent.', 'staging-guard' ) ); ?></p>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="sg-inline-form">
+							<?php wp_nonce_field( self::ACTION ); ?>
+							<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
+							<input type="hidden" name="task" value="test_email">
+							<label for="sg-test-to" class="screen-reader-text"><?php esc_html_e( 'Send to', 'staging-guard' ); ?></label>
+							<input type="email" id="sg-test-to" name="test_to" class="regular-text" value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" required>
+							<?php submit_button( __( 'Send', 'staging-guard' ), 'secondary', 'submit', false ); ?>
+						</form>
+					</div>
+				</div>
+			</div>
+
+			<?php $this->render_log( $log ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Prints the settings form.
+	 *
+	 * @param array $policy Mail policy in effect.
+	 */
+	private function render_settings_form( array $policy ): void {
+		$settings = $this->settings->all();
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<?php wp_nonce_field( self::ACTION ); ?>
+			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
+			<input type="hidden" name="task" value="save">
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Outgoing email', 'staging-guard' ); ?></th>
+					<td>
+						<fieldset <?php disabled( $policy['locked'] ); ?>>
+							<legend class="screen-reader-text"><?php esc_html_e( 'Outgoing email', 'staging-guard' ); ?></legend>
+							<label><input type="radio" name="mail_mode" value="block" <?php checked( 'block', $settings['mail_mode'] ); ?>> <?php esc_html_e( 'Block (recommended)', 'staging-guard' ); ?></label><br>
+							<label><input type="radio" name="mail_mode" value="redirect" <?php checked( 'redirect', $settings['mail_mode'] ); ?>> <?php esc_html_e( 'Send everything to one test address', 'staging-guard' ); ?></label><br>
+							<label for="sg-redirect-to" class="screen-reader-text"><?php esc_html_e( 'Test address', 'staging-guard' ); ?></label>
+							<input type="email" id="sg-redirect-to" class="regular-text sg-indent" name="redirect_to" value="<?php echo esc_attr( $settings['redirect_to'] ); ?>" placeholder="qa@example.com"><br>
+							<label><input type="radio" name="mail_mode" value="allow" <?php checked( 'allow', $settings['mail_mode'] ); ?>> <?php esc_html_e( 'Send normally', 'staging-guard' ); ?></label>
+						</fieldset>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="sg-allowlist"><?php esc_html_e( 'Always deliver to', 'staging-guard' ); ?></label></th>
+					<td>
+						<textarea id="sg-allowlist" name="allowlist" rows="3" class="large-text code" placeholder="@youragency.com&#10;client@example.com" <?php disabled( $policy['locked'] ); ?>><?php echo esc_textarea( implode( "\n", (array) $settings['allowlist'] ) ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'One address or @domain per line. These recipients get email normally, so your team can test real flows. Everyone else is blocked or redirected.', 'staging-guard' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Email log', 'staging-guard' ); ?></th>
+					<td>
+						<label><input type="checkbox" name="keep_bodies" value="1" <?php checked( $settings['keep_bodies'] ); ?>> <?php esc_html_e( 'Keep message bodies in the log', 'staging-guard' ); ?></label>
+						<p class="description"><?php esc_html_e( 'Useful for checking email content on staging. Off by default because emails can contain personal data and password reset links.', 'staging-guard' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Search engines', 'staging-guard' ); ?></th>
+					<td>
+						<label><input type="checkbox" name="noindex" value="1" <?php checked( $settings['noindex'] ); ?>> <?php esc_html_e( 'Hide from search engines', 'staging-guard' ); ?></label>
+					</td>
+				</tr>
+			</table>
+			<?php if ( $policy['locked'] ) : ?>
+				<p class="description"><?php esc_html_e( 'Email settings are fixed in wp-config.php (STAGING_GUARD_MAIL_MODE, STAGING_GUARD_REDIRECT_TO or STAGING_GUARD_ALLOWLIST).', 'staging-guard' ); ?></p>
+			<?php endif; ?>
+			<?php submit_button( __( 'Save settings', 'staging-guard' ) ); ?>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Prints the stopped email log.
+	 *
+	 * @param array[] $log Log entries.
+	 */
+	private function render_log( array $log ): void {
+		$actions = array(
+			'blocked'        => __( 'Blocked', 'staging-guard' ),
+			'redirected'     => __( 'Redirected', 'staging-guard' ),
+			'partly_blocked' => __( 'Partly blocked', 'staging-guard' ),
+		);
+		?>
+		<div class="sg-panel sg-log">
+			<div class="sg-log__head">
+				<h2><?php esc_html_e( 'Stopped email', 'staging-guard' ); ?></h2>
+				<?php
+				if ( $log ) {
+					$this->render_button( 'clear_log', __( 'Clear list', 'staging-guard' ), 'link-delete' );
+				}
+				?>
+			</div>
+			<?php if ( ! $log ) : ?>
+				<p><?php esc_html_e( 'No email has been stopped yet.', 'staging-guard' ); ?></p>
+			<?php else : ?>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e( 'When', 'staging-guard' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'To', 'staging-guard' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Subject', 'staging-guard' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'What happened', 'staging-guard' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $log as $entry ) : ?>
+							<tr class="sg-log__row">
+								<td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $entry['time'] ) ); ?></td>
+								<td><?php echo esc_html( $entry['to'] ); ?></td>
+								<td>
+									<?php if ( ! empty( $entry['body'] ) ) : ?>
+										<details>
+											<summary><?php echo esc_html( $entry['subject'] ); ?></summary>
+											<pre class="sg-log__body"><?php echo esc_html( $entry['body'] ); ?></pre>
+										</details>
+									<?php else : ?>
+										<?php echo esc_html( $entry['subject'] ); ?>
+									<?php endif; ?>
+								</td>
+								<td>
+									<span class="sg-badge sg-badge--<?php echo esc_attr( $entry['action'] ); ?>"><?php echo esc_html( $actions[ $entry['action'] ] ?? $entry['action'] ); ?></span>
+									<?php if ( ! empty( $entry['delivered'] ) ) : ?>
+										<br><small>
+											<?php
+											/* translators: %s: email addresses. */
+											echo esc_html( sprintf( __( 'Still delivered to %s', 'staging-guard' ), $entry['delivered'] ) );
+											?>
+										</small>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Prints a one-button form that runs a task.
+	 *
+	 * @param string $task  Task name.
+	 * @param string $label Button text.
+	 * @param string $style primary, secondary or link-delete.
+	 */
+	private function render_button( string $task, string $label, string $style = 'secondary' ): void {
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="sg-button-form">
+			<?php wp_nonce_field( self::ACTION ); ?>
+			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
+			<input type="hidden" name="task" value="<?php echo esc_attr( $task ); ?>">
+			<button type="submit" class="<?php echo esc_attr( 'link-delete' === $style ? 'button-link button-link-delete' : 'button button-' . $style ); ?>"><?php echo esc_html( $label ); ?></button>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Prints the result of the last action.
+	 */
+	private function render_notices(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only values set by our own redirect.
+		$message = isset( $_GET['sg_message'] ) ? sanitize_key( wp_unslash( $_GET['sg_message'] ) ) : '';
+		$result  = isset( $_GET['sg_test'] ) ? sanitize_key( wp_unslash( $_GET['sg_test'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		$messages = array(
+			'saved'    => __( 'Settings saved.', 'staging-guard' ),
+			'locked'   => __( 'Production is locked to this domain. Copies on other domains are now treated as staging.', 'staging-guard' ),
+			'unlocked' => __( 'Production lock removed.', 'staging-guard' ),
+			'cleared'  => __( 'Email list cleared.', 'staging-guard' ),
+		);
+		$tests    = array(
+			'blocked'        => __( 'Test email blocked. It is listed under Stopped email.', 'staging-guard' ),
+			'redirected'     => __( 'Test email redirected to the test address.', 'staging-guard' ),
+			'partly_blocked' => __( 'Test email partly blocked.', 'staging-guard' ),
+			'sent'           => __( 'Test email handed to the mail server.', 'staging-guard' ),
+			'failed'         => __( 'WordPress could not send the test email. Check the site\'s mail setup.', 'staging-guard' ),
+		);
+
+		if ( isset( $messages[ $message ] ) ) {
+			printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $messages[ $message ] ) );
+		}
+
+		if ( isset( $tests[ $result ] ) ) {
+			printf( '<div class="notice notice-%s is-dismissible sg-test-result"><p>%s</p></div>', 'failed' === $result ? 'error' : 'info', esc_html( $tests[ $result ] ) );
+		}
+	}
+
+	/**
+	 * Handles every form on the screen.
+	 */
+	public function handle_form(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to change these settings.', 'staging-guard' ), 403 );
+		}
+
+		check_admin_referer( self::ACTION );
+
+		$task = isset( $_POST['task'] ) ? sanitize_key( wp_unslash( $_POST['task'] ) ) : '';
+		$args = array();
+
+		switch ( $task ) {
+			case 'lock':
+				$this->environment->lock();
+				$args['sg_message'] = 'locked';
+				break;
+
+			case 'unlock':
+				$this->environment->unlock();
+				$args['sg_message'] = 'unlocked';
+				break;
+
+			case 'clear_log':
+				$this->mail->log()->clear();
+				$args['sg_message'] = 'cleared';
+				break;
+
+			case 'test_email':
+				$to              = isset( $_POST['test_to'] ) ? sanitize_email( wp_unslash( $_POST['test_to'] ) ) : '';
+				$args['sg_test'] = is_email( $to ) ? $this->mail->send_test( $to ) : 'failed';
+				break;
+
+			case 'save':
+				$mode = isset( $_POST['mail_mode'] ) ? sanitize_key( wp_unslash( $_POST['mail_mode'] ) ) : 'block';
+				$this->settings->update(
+					array(
+						'mail_mode'   => in_array( $mode, Settings::MAIL_MODES, true ) ? $mode : 'block',
+						'redirect_to' => isset( $_POST['redirect_to'] ) ? sanitize_email( wp_unslash( $_POST['redirect_to'] ) ) : '',
+						'allowlist'   => isset( $_POST['allowlist'] ) ? Settings::parse_allowlist( sanitize_textarea_field( wp_unslash( $_POST['allowlist'] ) ) ) : array(),
+						'keep_bodies' => ! empty( $_POST['keep_bodies'] ),
+						'noindex'     => ! empty( $_POST['noindex'] ),
+					)
+				);
+				$args['sg_message'] = 'saved';
+				break;
+		}
+
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'tools.php?page=' . self::SLUG ) ) );
+		exit;
+	}
+}

@@ -1,0 +1,96 @@
+=== Staging Guard ===
+Contributors: aryanjasala
+Tags: staging, environment, email, noindex, development
+Requires at least: 6.6
+Tested up to: 7.1
+Requires PHP: 7.4
+Stable tag: 1.1.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Stop staging sites from emailing real customers and showing up in Google. Colours the admin bar so nobody edits the wrong copy.
+
+== Description ==
+
+Every agency has a staging story. A copy of the live database goes to staging, and then:
+
+* a scheduled task emails every customer from the staging site,
+* Google indexes staging.example.com and it outranks the real site,
+* someone spends an hour editing staging, thinking it was live.
+
+Staging Guard prevents all three, on every copy that is not the live site.
+
+**On staging, development and local copies it:**
+
+* Blocks all outgoing email, or sends it all to one test address with the real recipients shown in the subject. Cc and Bcc recipients are removed too.
+* Lets your own team keep receiving email: list addresses or whole domains (@youragency.com) under "Always deliver to".
+* Keeps a list of the last 50 stopped emails (recipient, subject and time), so you can see what would have gone out. Turn on "keep message bodies" to check email content as well.
+* Sends a test email from the settings screen, so you can see exactly what happens to email from this copy.
+* Hides the site from search engines with an `X-Robots-Tag` header, a `noindex, nofollow` robots meta tag and a robots.txt that blocks everything, and turns off the XML sitemap.
+* Colours the whole admin bar (orange for staging, blue for development, green for local) and labels it, on the dashboard and on the front end.
+* Adds the environment to every browser tab title, for example "[Staging] Posts", so the right tab is easy to find.
+* Adds a Site Health check that warns when email from a staging copy could still reach real people, or when staging copies of the live site would not be detected.
+
+**On the live site it does nothing.**
+
+= How it knows which copy is live =
+
+1. If `WP_ENVIRONMENT_TYPE` is set in wp-config.php or in the server environment, it uses that. This is the WordPress standard, and many hosts set it for you.
+2. Otherwise, use the **production lock**: on the live site, go to Tools > Staging Guard and click "This is the live site". From then on, any copy of the database running on a different domain is treated as staging, with no wp-config.php change.
+
+The lock stores a hash of the live domain instead of the domain itself. Migration tools that search and replace the domain name in the database leave the hash alone, so the lock survives the copy to staging.
+
+If neither is set, WordPress assumes production and Staging Guard stays off.
+
+= Settings in wp-config.php =
+
+Fix the email behaviour per environment, so a database copy cannot change it:
+
+`define( 'STAGING_GUARD_MAIL_MODE', 'redirect' ); // block, redirect or allow`
+`define( 'STAGING_GUARD_REDIRECT_TO', 'qa@example.com' );`
+`define( 'STAGING_GUARD_ALLOWLIST', '@youragency.com, client@example.com' );`
+
+= WP-CLI =
+
+* `wp staging-guard status` shows the environment, how it was detected, and what is guarded.
+* `wp staging-guard lock-production` marks the current domain as the live site.
+* `wp staging-guard unlock-production` removes the lock.
+* `wp staging-guard log` lists stopped email.
+* `wp staging-guard test-email you@example.com` sends a test email and reports what happened to it.
+
+== Frequently Asked Questions ==
+
+= Does it work with SMTP plugins? =
+
+Yes, for plugins that send through WordPress's own `wp_mail()` function, which is most of them. A few plugins replace `wp_mail()` entirely. Staging Guard detects this and shows a warning on its settings screen, because it cannot intercept those emails.
+
+= Will blocked emails break password resets on staging? =
+
+No. Blocked emails are reported to WordPress as sent, so forms and password resets behave normally. Use redirect mode if you need to receive them.
+
+= What if I copy the staging database to production? =
+
+The production lock is still stored, and the live domain still matches it, so the live site stays unguarded. The search engine setting under Settings > Reading is never changed by this plugin.
+
+= Can I change how the environment is detected? =
+
+Use the `staging_guard_environment` filter. It receives an array with `type` (production, staging, development or local) and `source`.
+
+== Screenshots ==
+
+1. The coloured admin bar on a staging copy.
+2. Tools > Staging Guard with the email log.
+
+== Changelog ==
+
+= 1.1.0 =
+* New: "Always deliver to" allowlist for addresses and @domains.
+* New: send a test email from the settings screen or WP-CLI.
+* New: optionally keep message bodies in the email log.
+* New: Site Health check.
+* New: environment shown in browser tab titles.
+* New: redesigned settings screen with status cards.
+* Rewritten as PSR-4 classes.
+
+= 1.0.0 =
+* First release.
