@@ -58,7 +58,7 @@ add_filter( 'staging_guard_environment', function ( array $environment ) {
 
 ## Abilities
 
-On WordPress 6.9 and later, Staging Guard registers [abilities](https://developer.wordpress.org/apis/abilities/), which AI agents find and run through the [MCP adapter](https://github.com/WordPress/mcp-adapter) and anything else through the REST API under `/wp-abilities/v1/`.
+On WordPress 6.9 and later, Staging Guard registers [abilities](https://developer.wordpress.org/apis/abilities/), which AI agents find and run through the [MCP adapter](https://github.com/WordPress/mcp-adapter) and anything else through the REST API under `/wp-abilities/v1/`. Each one is marked public, which the MCP adapter needs before it lists an ability.
 
 | Ability | Does | Needs |
 | --- | --- | --- |
