@@ -51,7 +51,12 @@ final class Robots implements Service {
 	 * @return string
 	 */
 	public function robots_txt(): string {
-		return "# Staging Guard: this is not the live site.\nUser-agent: *\nDisallow: /\n";
+		/**
+		 * Filters the robots.txt a staging copy serves.
+		 *
+		 * @param string $output Default: disallow everything.
+		 */
+		return (string) apply_filters( 'staging_guard_robots_txt', "# Staging Guard: this is not the live site.\nUser-agent: *\nDisallow: /\n" );
 	}
 
 	/**
