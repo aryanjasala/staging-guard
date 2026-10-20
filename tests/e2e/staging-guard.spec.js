@@ -161,6 +161,8 @@ test.describe( 'Staging Guard', () => {
 
 		const listed = await rest( 'GET', '/wp-abilities/v1/abilities?category=staging-guard' );
 		expect( listed.body.map( ( ability ) => ability.name ).sort() ).toEqual( [ 'staging-guard/get-environment', 'staging-guard/get-mail-log', 'staging-guard/send-test-email' ] );
+		// MCP clients only list abilities marked public.
+		expect( JSON.parse( wpEval( `echo wp_json_encode( array_values( array_filter( array_map( function ( $ability ) { $meta = $ability->get_meta(); return ( ! empty( $meta['public'] ) && ! empty( $meta['mcp']['public'] ) ) ? '' : $ability->get_name(); }, wp_get_abilities() ), function ( $name ) { return 0 === strpos( $name, 'staging-guard/' ); } ) ) );` ) ) ).toEqual( [] );
 
 		expect( ( await run( 'get-environment', 'GET' ) ).body ).toMatchObject( { environment: 'production', is_live_site: true, source: 'default', email: 'allow' } );
 
