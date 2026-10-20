@@ -1,93 +1,105 @@
-# Staging Guard
+<h1 align="center">Staging Guard</h1>
 
-Stops staging, development and local copies of a WordPress site from emailing real people or getting indexed, and colours the admin bar so nobody edits the wrong copy. On the live site it does nothing.
+<p align="center">
+  <a href="https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aryanjasala/staging-guard/main/blueprint.json"><img src="https://img.shields.io/badge/Try%20in-WordPress%20Playground-3858e9?logo=wordpress&logoColor=white" alt="Try in WordPress Playground"></a>
+  <a href="https://github.com/aryanjasala/staging-guard/releases/latest"><img src="https://img.shields.io/github/v/release/aryanjasala/staging-guard?label=release&color=2271b1" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/WordPress-6.6%2B-3858e9?logo=wordpress&logoColor=white" alt="WordPress 6.6+">
+  <img src="https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white" alt="PHP 7.4+">
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="License: GPL-2.0-or-later"></a>
+  <br>
+  <a href="https://github.com/aryanjasala/staging-guard/actions/workflows/phpcs.yml"><img src="https://github.com/aryanjasala/staging-guard/actions/workflows/phpcs.yml/badge.svg" alt="PHPCS"></a>
+  <a href="https://github.com/aryanjasala/staging-guard/actions/workflows/phpstan.yml"><img src="https://github.com/aryanjasala/staging-guard/actions/workflows/phpstan.yml/badge.svg" alt="PHPStan"></a>
+  <a href="https://github.com/aryanjasala/staging-guard/actions/workflows/unit-tests.yml"><img src="https://github.com/aryanjasala/staging-guard/actions/workflows/unit-tests.yml/badge.svg" alt="Unit tests"></a>
+  <a href="https://github.com/aryanjasala/staging-guard/actions/workflows/e2e-tests.yml"><img src="https://github.com/aryanjasala/staging-guard/actions/workflows/e2e-tests.yml/badge.svg" alt="E2E tests"></a>
+  <a href="https://github.com/aryanjasala/staging-guard/actions/workflows/plugin-check.yml"><img src="https://github.com/aryanjasala/staging-guard/actions/workflows/plugin-check.yml/badge.svg" alt="Plugin Check"></a>
+</p>
 
-On any copy that is not production:
+<p align="center">Stop staging copies from emailing real customers or showing up in Google, and color the admin bar so nobody edits the wrong copy.</p>
 
-- Outgoing email is blocked, or sent to one test address with the real recipients in the subject. Cc and Bcc are stripped
-- Addresses and whole domains on an "Always deliver to" list still get email, so the team can test real flows
-- The last 50 stopped emails are listed, with message bodies only if that setting is on
-- Search engines get an `X-Robots-Tag` header, a `noindex, nofollow` meta tag and a robots.txt that blocks everything. The XML sitemap is turned off
-- The admin bar is coloured by environment and every browser tab title starts with it, for example `[Staging] Posts`
-- A Site Health check warns when email could still reach real people
+<p align="center">
+  <img src=".wordpress-org/screenshot-2.png" alt="Tools > Staging Guard with the email log" width="880">
+</p>
 
-## How it decides a copy is not live
+---
 
-1. `WP_ENVIRONMENT_TYPE`, if it is set in wp-config.php or the server environment.
-2. Otherwise the **production lock**: set it once on the live site and every copy of that database on another domain counts as staging. The lock stores a hash of the live domain, not the domain itself, so database search-replace during a migration does not rewrite it.
+Every agency has a staging story: a copy of the live database goes to staging and emails every customer, Google indexes it, or someone spends an hour editing it thinking it was live. Staging Guard prevents all three on every copy that is not production, and does nothing on the live site.
 
-With neither, WordPress assumes production and the plugin stays off.
+## Features
 
-User-facing docs are in [`readme.txt`](readme.txt), which is what WordPress.org shows.
+- **Email**: blocked, or sent to one test address with the real recipients in the subject. Cc and Bcc stripped
+- **Always deliver to**: addresses and whole domains that still get email, so the team can test real flows
+- **Email log** of the last 50 stopped emails, with bodies only if you turn that on
+- **Search engines**: `X-Robots-Tag` header, `noindex, nofollow` meta tag, a blocking robots.txt, no sitemap
+- **Admin bar** colored by environment, and `[Staging]` at the start of every browser tab title
+- **Production lock**: mark the live site once, and every database copy on another domain counts as staging
+- **Site Health** check that warns when email could still reach real people
 
-## Requirements
+## Install
 
-WordPress 6.6+, PHP 7.4+.
+1. Download `staging-guard.zip` from the [latest release](https://github.com/aryanjasala/staging-guard/releases/latest).
+2. In WordPress, go to **Plugins > Add New Plugin > Upload Plugin**, choose the zip and activate it.
 
-## Development
+Or with WP-CLI:
 
 ```sh
-composer install
-npm ci
+wp plugin install https://github.com/aryanjasala/staging-guard/releases/latest/download/staging-guard.zip --activate
 ```
 
-| Command | What it runs |
+Needs WordPress 6.6+ and PHP 7.4+. To try it first, the **Try in WordPress Playground** badge opens a throwaway WordPress in your browser with the plugin and some demo content.
+
+## Quick look
+
+Pin the email behavior per environment in wp-config.php, so a database copy cannot change it:
+
+```php
+define( 'STAGING_GUARD_MAIL_MODE', 'redirect' );   // block, redirect or allow
+define( 'STAGING_GUARD_REDIRECT_TO', 'qa@example.com' );
+define( 'STAGING_GUARD_ALLOWLIST', '@youragency.com' );
+```
+
+It decides a copy is not live from `WP_ENVIRONMENT_TYPE` when that is set, otherwise from the **production lock**: a hash of the live domain, which survives the search-replace step of a migration.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src=".wordpress-org/screenshot-1.png" alt="The coloured admin bar on a staging copy"><br><sub>The coloured admin bar on a staging copy</sub></td>
+  </tr>
+</table>
+
+## Documentation
+
+| Doc | What it covers |
 | --- | --- |
-| `composer lint` | PHPCS with the WordPress standard and PHPCompatibility from PHP 7.4 |
-| `composer analyse` | PHPStan level 6 with WordPress and WP-CLI stubs |
-| `composer test` | PHPUnit unit tests. WordPress functions are mocked with Brain Monkey, so no database is needed |
-| `npm run env:start` | WordPress and MariaDB in Docker on http://localhost:8895 |
-| `npm run test:e2e` | Playwright end-to-end tests against that site, in headless Chrome |
-| `npm run env:stop` | Removes the site and its database |
+| [Reference](docs/REFERENCE.md) | Environment detection, constants, the filter and WP-CLI |
+| [Development](docs/DEVELOPMENT.md) | Local setup, commands and tests |
+| [Contributing](docs/CONTRIBUTING.md) | Pull requests, required checks and PR titles |
+| [Releasing](docs/RELEASING.md) | How merged pull requests become releases |
+| [Security](docs/SECURITY.md) | Reporting a vulnerability |
+| [readme.txt](readme.txt) | What WordPress.org shows, with the FAQ and changelog |
 
-The plugin is mounted read-only into the Docker site, so nothing in WordPress can change or delete the source. The end-to-end run empties the site's content before it starts, so point it only at this throwaway site.
-
-## Tests
-
-- **15 unit tests**: environment detection and the production lock (the hash ignores case and never contains the domain), recipient parsing, the allowlist, block, redirect and allow modes, Cc and Bcc filtering, and the email log
-- **6 end-to-end tests**: an unmarked site left alone, a copy on another domain guarded everywhere (headers, meta tag, robots.txt, sitemap, admin bar, tab title, Site Health), the test email, redirect mode with an allowlist, the production lock buttons, and the WP-CLI commands
-
-The redirect test hooks `phpmailer_init` and checks the recipients PHPMailer would really send to, not only what the log says.
-
-## CI
-
-| Workflow | Runs on | What it checks |
-| --- | --- | --- |
-| PHPCS | push to `main`, pull requests | WordPress coding standards |
-| PHPStan | push to `main`, pull requests | Static analysis, level 6 |
-| Unit tests | push to `main`, pull requests | PHPUnit on PHP 7.4, 8.0, 8.1, 8.2, 8.3 and 8.4 |
-| E2E tests | push to `main`, pull requests | Playwright against the latest WordPress in Docker |
-| Plugin Check | push to `main`, pull requests | The official WordPress.org Plugin Check, on the built zip |
-| Release | tags `v*` | Builds the zip and publishes a GitHub release |
-
-## Releasing
-
-1. Update the version in three places: the plugin header, the `VERSION` constant and `Stable tag` in `readme.txt`. Add a `= x.y.z =` entry under `== Changelog ==`.
-2. Push a tag: `git tag v1.2.0 && git push origin v1.2.0`.
-
-The release workflow fails if the tag does not match all three versions or the changelog has no entry for it. Otherwise it runs PHPCS and PHPUnit, builds the zip with `bin/build-zip.sh` (leaving out everything in `.distignore`), and publishes a GitHub release with the changelog entry as notes.
-
-Deploying to WordPress.org is off until the repository variable `WPORG_DEPLOY` is `true` and the secrets `SVN_USERNAME` and `SVN_PASSWORD` are set.
-
-## Layout
+## Project structure
 
 ```
-staging-guard.php       plugin header and PSR-4 autoloader
+staging-guard.php          plugin header and PSR-4 autoloader
 src/
-  Plugin.php            creates the services, guards only load when not production
-  Settings.php          the settings option and allowlist parsing
-  Environment.php       environment detection and the production lock
-  Mail/Guard.php        who an email may reach
-  Mail/Log.php          the stopped email list
-  Search/Robots.php     noindex header and tag, robots.txt, sitemaps
-  Admin/                settings screen, admin bar and tab titles
-  Health/SiteHealth.php the Site Health check
-  Cli/Command.php       wp staging-guard status|lock-production|log|test-email
+├── Plugin.php             creates the services, guards load only when not production
+├── Settings.php           the settings option and allowlist parsing
+├── Environment.php        environment detection and the production lock
+├── Mail/
+│   ├── Guard.php          who an email may reach
+│   └── Log.php            the stopped email list
+├── Search/Robots.php      noindex header and tag, robots.txt, sitemaps
+├── Admin/                 settings screen, admin bar and tab titles
+├── Health/SiteHealth.php  the Site Health check
+└── Cli/Command.php        wp staging-guard
 tests/
-  Unit/                 PHPUnit
-  e2e/                  Playwright specs and the Docker site
+├── Unit/                  PHPUnit
+└── e2e/                   Playwright specs and the Docker site
+.wordpress-org/            screenshots
+docs/                      reference, development, contributing, releasing
 ```
 
 ## License
 
-GPL-2.0-or-later
+[GPL-2.0-or-later](LICENSE.md) © Aryan Jasala

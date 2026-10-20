@@ -1,0 +1,38 @@
+{
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"meta": {
+		"title": "Staging Guard demo",
+		"author": "aryanjasala"
+	},
+	"landingPage": "/wp-admin/tools.php?page=staging-guard",
+	"preferredVersions": {
+		"php": "8.3",
+		"wp": "latest"
+	},
+	"features": {
+		"networking": true
+	},
+	"login": true,
+	"steps": [
+		{
+			"step": "installPlugin",
+			"pluginData": {
+				"resource": "git:directory",
+				"url": "https://github.com/aryanjasala/staging-guard",
+				"ref": "main"
+			},
+			"options": {
+				"activate": true,
+				"targetFolderName": "staging-guard"
+			}
+		},
+		{
+			"step": "runPHP",
+			"code": "<?php require_once '/wordpress/wp-load.php'; update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ), 'allowlist' => array( '@youragency.com' ), 'keep_bodies' => true ), false );"
+		},
+		{
+			"step": "runPHP",
+			"code": "<?php require_once '/wordpress/wp-load.php'; $from = 'From: Example Shop <shop@example.com>'; wp_mail( 'sam.lee@example.net', 'Your order #1042 has shipped', 'Hi Sam, your order is on its way.', $from ); wp_mail( array( 'priya@example.org', 'dev@youragency.com' ), 'New comment on \"Spring menu\"', 'A new comment is waiting for approval.', $from );"
+		}
+	]
+}
