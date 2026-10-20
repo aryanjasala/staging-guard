@@ -101,6 +101,7 @@ final class Plugin {
 			new SettingsPage( $this->settings, $this->environment, $this->mail ),
 			new SiteHealth( $this->settings, $this->environment, $this->mail ),
 			new LockNotice( $this->environment ),
+			new Abilities( $this->settings, $this->environment, $this->mail ),
 		);
 
 		if ( $this->environment->is_guarded() ) {
