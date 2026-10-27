@@ -2,13 +2,13 @@
 /**
  * Tests for environment detection and the production lock.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Tests\Unit;
+namespace AryanX\Axle\StagingGuard\Tests\Unit;
 
-use AryanX\StagingGuard\Environment;
-use AryanX\StagingGuard\Settings;
+use AryanX\Axle\StagingGuard\Environment;
+use AryanX\Axle\StagingGuard\Settings;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 

@@ -28,7 +28,7 @@
 		},
 		{
 			"step": "runPHP",
-			"code": "<?php require_once '/wordpress/wp-load.php'; update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ), 'allowlist' => array( '@youragency.com' ), 'keep_bodies' => true ), false );"
+			"code": "<?php require_once '/wordpress/wp-load.php'; update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\Axle\\StagingGuard\\Environment::hash( 'shop.example.com' ), 'allowlist' => array( '@youragency.com' ), 'keep_bodies' => true ), false );"
 		},
 		{
 			"step": "runPHP",

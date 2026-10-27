@@ -12,17 +12,17 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       staging-guard
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard;
+namespace AryanX\Axle\StagingGuard;
 
 defined( 'ABSPATH' ) || exit;
 
 const VERSION     = '1.3.0';
 const PLUGIN_FILE = __FILE__;
 
-// PSR-4: AryanX\StagingGuard\Foo\Bar lives in src/Foo/Bar.php.
+// PSR-4: AryanX\Axle\StagingGuard\Foo\Bar lives in src/Foo/Bar.php.
 spl_autoload_register(
 	static function ( $class_name ) {
 		$prefix = __NAMESPACE__ . '\\';

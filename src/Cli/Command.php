@@ -2,14 +2,14 @@
 /**
  * `wp staging-guard` commands.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Cli;
+namespace AryanX\Axle\StagingGuard\Cli;
 
-use AryanX\StagingGuard\Environment;
-use AryanX\StagingGuard\Mail\Guard;
-use AryanX\StagingGuard\Settings;
+use AryanX\Axle\StagingGuard\Environment;
+use AryanX\Axle\StagingGuard\Mail\Guard;
+use AryanX\Axle\StagingGuard\Settings;
 
 defined( 'ABSPATH' ) || exit;
 

@@ -2,17 +2,17 @@
 /**
  * Tools > Staging Guard.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Admin;
+namespace AryanX\Axle\StagingGuard\Admin;
 
-use AryanX\StagingGuard\Environment;
-use AryanX\StagingGuard\Mail\Guard;
-use AryanX\StagingGuard\Service;
-use AryanX\StagingGuard\Settings;
-use const AryanX\StagingGuard\PLUGIN_FILE;
-use const AryanX\StagingGuard\VERSION;
+use AryanX\Axle\StagingGuard\Environment;
+use AryanX\Axle\StagingGuard\Mail\Guard;
+use AryanX\Axle\StagingGuard\Service;
+use AryanX\Axle\StagingGuard\Settings;
+use const AryanX\Axle\StagingGuard\PLUGIN_FILE;
+use const AryanX\Axle\StagingGuard\VERSION;
 
 defined( 'ABSPATH' ) || exit;
 

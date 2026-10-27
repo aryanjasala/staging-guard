@@ -25,12 +25,12 @@
   },
   "autoload": {
     "psr-4": {
-      "AryanX\\StagingGuard\\": "src/"
+      "AryanX\\Axle\\StagingGuard\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "AryanX\\StagingGuard\\Tests\\": "tests/"
+      "AryanX\\Axle\\StagingGuard\\Tests\\": "tests/"
     }
   },
   "config": {

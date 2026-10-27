@@ -2,12 +2,12 @@
 /**
  * Keeps search engines away from non-production copies.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Search;
+namespace AryanX\Axle\StagingGuard\Search;
 
-use AryanX\StagingGuard\Service;
+use AryanX\Axle\StagingGuard\Service;
 
 defined( 'ABSPATH' ) || exit;
 
