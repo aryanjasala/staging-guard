@@ -10,7 +10,7 @@
     {
       "name": "Tools > Staging Guard on a staging copy, with the email log and one email open",
       "setup": [
-        ["eval", "update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ), 'allowlist' => array( '@youragency.com' ), 'keep_bodies' => true ), false );"],
+        ["eval", "update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\Axle\\StagingGuard\\Environment::hash( 'shop.example.com' ), 'allowlist' => array( '@youragency.com' ), 'keep_bodies' => true ), false );"],
         ["eval", "wp_mail( 'sam.lee@example.net', 'Your order #1042 has shipped', 'Your order is on its way.' ); wp_mail( array( 'priya@example.org', 'dev@youragency.com' ), 'New comment', 'A new comment is waiting for approval.' );"]
       ],
       "url": "/wp-admin/tools.php?page=staging-guard",
@@ -22,14 +22,14 @@
     },
     {
       "name": "Dashboard on a staging copy: lock notice and toolbar badge",
-      "setup": [["eval", "update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ) ), false ); delete_user_meta( 1, 'staging_guard_lock_notice_dismissed' );"]],
+      "setup": [["eval", "update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\Axle\\StagingGuard\\Environment::hash( 'shop.example.com' ) ), false ); delete_user_meta( 1, 'staging_guard_lock_notice_dismissed' );"]],
       "url": "/wp-admin/index.php",
       "include": [".sg-lock-notice", "#wp-admin-bar-staging-guard"],
       "cleanup": [["option", "delete", "staging_guard_settings"]]
     },
     {
       "name": "Front end toolbar badge on a staging copy",
-      "setup": [["eval", "update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ) ), false );"]],
+      "setup": [["eval", "update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\Axle\\StagingGuard\\Environment::hash( 'shop.example.com' ) ), false );"]],
       "url": "/",
       "include": ["#wp-admin-bar-staging-guard"],
       "cleanup": [["option", "delete", "staging_guard_settings"]]

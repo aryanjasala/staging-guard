@@ -2,13 +2,13 @@
 /**
  * Record of stopped email.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Mail;
+namespace AryanX\Axle\StagingGuard\Mail;
 
-use AryanX\StagingGuard\Service;
-use AryanX\StagingGuard\Settings;
+use AryanX\Axle\StagingGuard\Service;
+use AryanX\Axle\StagingGuard\Settings;
 
 defined( 'ABSPATH' ) || exit;
 

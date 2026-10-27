@@ -2,14 +2,14 @@
 /**
  * Environment label in the admin bar and browser tab.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Admin;
+namespace AryanX\Axle\StagingGuard\Admin;
 
-use AryanX\StagingGuard\Environment;
-use AryanX\StagingGuard\Mail\Guard;
-use AryanX\StagingGuard\Service;
+use AryanX\Axle\StagingGuard\Environment;
+use AryanX\Axle\StagingGuard\Mail\Guard;
+use AryanX\Axle\StagingGuard\Service;
 
 defined( 'ABSPATH' ) || exit;
 

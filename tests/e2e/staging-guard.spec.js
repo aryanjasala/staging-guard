@@ -8,7 +8,7 @@ const live = () => wp( 'option', 'delete', 'staging_guard_settings' );
 const clearLog = () =>
 	wpEval( `foreach ( get_posts( array( 'post_type' => 'staging_guard_mail', 'post_status' => 'any', 'numberposts' => 500, 'fields' => 'ids' ) ) as $id ) { wp_delete_post( $id, true ); }` );
 const copiedToStaging = () =>
-	wpEval( `update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'live.example.com' ) ), false );` );
+	wpEval( `update_option( 'staging_guard_settings', array( 'production_hash' => AryanX\\Axle\\StagingGuard\\Environment::hash( 'live.example.com' ) ), false );` );
 
 test.describe( 'Staging Guard', () => {
 	test.beforeEach( () => {
@@ -71,7 +71,7 @@ test.describe( 'Staging Guard', () => {
 			JSON.parse(
 				wpEval( `
 					add_filter( 'staging_guard_production_hosts', function () { return ${ hosts }; } );
-					echo wp_json_encode( ( new AryanX\\StagingGuard\\Environment( new AryanX\\StagingGuard\\Settings() ) )->detect() );
+					echo wp_json_encode( ( new AryanX\\Axle\\StagingGuard\\Environment( new AryanX\\Axle\\StagingGuard\\Settings() ) )->detect() );
 				` )
 			);
 

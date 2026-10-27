@@ -2,10 +2,10 @@
 /**
  * Saved settings.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard;
+namespace AryanX\Axle\StagingGuard;
 
 defined( 'ABSPATH' ) || exit;
 

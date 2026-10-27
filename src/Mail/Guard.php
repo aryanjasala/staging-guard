@@ -2,14 +2,14 @@
 /**
  * Stops or redirects outgoing email.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Mail;
+namespace AryanX\Axle\StagingGuard\Mail;
 
-use AryanX\StagingGuard\Environment;
-use AryanX\StagingGuard\Service;
-use AryanX\StagingGuard\Settings;
+use AryanX\Axle\StagingGuard\Environment;
+use AryanX\Axle\StagingGuard\Service;
+use AryanX\Axle\StagingGuard\Settings;
 
 defined( 'ABSPATH' ) || exit;
 

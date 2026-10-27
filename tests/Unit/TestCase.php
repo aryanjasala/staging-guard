@@ -2,10 +2,10 @@
 /**
  * Base class for unit tests.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard\Tests\Unit;
+namespace AryanX\Axle\StagingGuard\Tests\Unit;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;

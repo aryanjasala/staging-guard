@@ -2,13 +2,13 @@
 /**
  * Abilities: environment checks for AI agents and other Abilities API clients.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard;
+namespace AryanX\Axle\StagingGuard;
 
-use AryanX\StagingGuard\Admin\SettingsPage;
-use AryanX\StagingGuard\Mail\Guard;
+use AryanX\Axle\StagingGuard\Admin\SettingsPage;
+use AryanX\Axle\StagingGuard\Mail\Guard;
 
 defined( 'ABSPATH' ) || exit;
 

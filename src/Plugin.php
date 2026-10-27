@@ -2,19 +2,19 @@
 /**
  * Plugin bootstrap.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard;
+namespace AryanX\Axle\StagingGuard;
 
-use AryanX\StagingGuard\Admin\AdminBar;
-use AryanX\StagingGuard\Admin\LockNotice;
-use AryanX\StagingGuard\Admin\SettingsPage;
-use AryanX\StagingGuard\Cli\Command;
-use AryanX\StagingGuard\Health\SiteHealth;
-use AryanX\StagingGuard\Mail\Guard;
-use AryanX\StagingGuard\Mail\Log;
-use AryanX\StagingGuard\Search\Robots;
+use AryanX\Axle\StagingGuard\Admin\AdminBar;
+use AryanX\Axle\StagingGuard\Admin\LockNotice;
+use AryanX\Axle\StagingGuard\Admin\SettingsPage;
+use AryanX\Axle\StagingGuard\Cli\Command;
+use AryanX\Axle\StagingGuard\Health\SiteHealth;
+use AryanX\Axle\StagingGuard\Mail\Guard;
+use AryanX\Axle\StagingGuard\Mail\Log;
+use AryanX\Axle\StagingGuard\Search\Robots;
 
 defined( 'ABSPATH' ) || exit;
 

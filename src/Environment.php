@@ -2,10 +2,10 @@
 /**
  * Works out whether this copy of the site is production.
  *
- * @package AryanX\StagingGuard
+ * @package AryanX\Axle\StagingGuard
  */
 
-namespace AryanX\StagingGuard;
+namespace AryanX\Axle\StagingGuard;
 
 defined( 'ABSPATH' ) || exit;
 

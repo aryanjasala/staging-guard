@@ -7,12 +7,12 @@ test( 'demo: a staging copy blocks, then redirects, its email', async ( { browse
 	prepareSite( 'Example Shop' );
 	// A copy of the live site at shop.example.com, so this domain counts as staging.
 	wpEval( `update_option( 'staging_guard_settings', array(
-		'production_hash' => AryanX\\StagingGuard\\Environment::hash( 'shop.example.com' ),
+		'production_hash' => AryanX\\Axle\\StagingGuard\\Environment::hash( 'shop.example.com' ),
 		'allowlist'       => array( '@youragency.com' ),
 		'keep_bodies'     => true,
 	), false );` );
 	// The screens warn that only the lock makes this staging; hide that for the pictures.
-	wpEval( `update_user_meta( 1, 'staging_guard_lock_notice_dismissed', AryanX\\StagingGuard\\Environment::hash( wp_parse_url( home_url(), PHP_URL_HOST ) . ':' . wp_parse_url( home_url(), PHP_URL_PORT ) ) );` );
+	wpEval( `update_user_meta( 1, 'staging_guard_lock_notice_dismissed', AryanX\\Axle\\StagingGuard\\Environment::hash( wp_parse_url( home_url(), PHP_URL_HOST ) . ':' . wp_parse_url( home_url(), PHP_URL_PORT ) ) );` );
 	wpEval( `foreach ( get_posts( array( 'post_type' => 'staging_guard_mail', 'post_status' => 'any', 'numberposts' => 500, 'fields' => 'ids' ) ) as $id ) { wp_delete_post( $id, true ); }` );
 	const post = wp( 'post', 'create', '--post_title=Spring menu is here', '--post_status=publish', '--post_content=Three new dishes and a lemon tart.', '--porcelain' );
 
