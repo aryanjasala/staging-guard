@@ -64,6 +64,10 @@ Fix the email behaviour per environment, so a database copy cannot change it:
 * `wp staging-guard log` lists stopped email.
 * `wp staging-guard test-email you@example.com` sends a test email and reports what happened to it.
 
+**Try it before you install.** [try.axlewp.com/staging-guard](https://try.axlewp.com/staging-guard) opens a private WordPress in your browser with this plugin and some demo content.
+
+Part of [Axle](https://axlewp.com/), a family of free plugins for running WordPress sites safely.
+
 == Frequently Asked Questions ==
 
 = Does it work with SMTP plugins? =
